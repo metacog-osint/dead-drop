@@ -1,0 +1,8 @@
+/* Evidence Capture: the notice before the buttons, the citation text, small table buttons. */
+.ec-warn { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 2px 10px; margin: 12px 0 0; }
+.ec-warn p { margin: 6px 0; }
+.ec-cite { overflow-wrap: anywhere; background: var(--bg); padding: 6px 8px; border-radius: 4px; }
+.ec-cite:empty { display: none; }
+.scroll.all { max-height: none; }
+table.data td { overflow-wrap: anywhere; }
+table.data td button { font-size: 13px; padding: 2px 8px; margin: 0 4px 4px 0; }

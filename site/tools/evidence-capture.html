@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence Capture · Dead Drop Toolbox</title>
+<meta name="description" content="Preserve a public web page as evidence: find the closest Internet Archive copy, ask for a new one, and keep a log of captures with citations, exportable as CSV or JSON.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="evidence-capture.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/evidence-capture.js"></script>
+<script src="evidence-capture.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Reference · Archiving</p>
+  <h1>Evidence Capture</h1>
+  <p class="lede">Helps you keep a public web page as evidence before it changes or disappears. It finds the
+    Internet Archive's copy of the page nearest a time you choose, lets you ask the archive for a fresh copy, points
+    you to a second archive, archive.today, and keeps a log in this browser of what you captured and when, with a
+    citation line for each, ready to export.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>The page</h2>
+      <div class="field"><label for="url">Page address (URL)</label>
+        <input type="text" id="url" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://example.com/article">
+        <span class="hint">Only public http and https pages. Anything after # is dropped, because it is never sent to the site.</span></div>
+      <div class="field"><label for="title">Page title (optional)</label>
+        <input type="text" id="title" autocomplete="off">
+        <span class="hint">As the page shows it; used in the citation. This page cannot read other sites, so type or paste it.</span></div>
+      <div class="field"><label for="near">Copy nearest to (UTC, optional)</label>
+        <input type="datetime-local" id="near" step="1">
+        <span class="hint">Leave empty for the most recent copy. Entered in UTC.</span></div>
+      <div class="field"><label for="note">Note (optional)</label>
+        <textarea id="note" rows="2"></textarea>
+        <span class="hint">Why it matters, where you found it. Kept in this browser only.</span></div>
+      <div class="ec-warn small">
+        <p><strong>Before you press a button.</strong> Checking sends the page's address to the Internet Archive.
+          Saving a new copy asks the Internet Archive to fetch the page itself: the site sees a visit from the archive
+          (not from you), and the copy becomes <em>public</em>, findable by anyone, including the site's owners.
+          Do not archive pages that are private, behind a login, or carry personal details you should not spread.</p>
+      </div>
+      <div class="actions"><button class="primary" type="submit" id="check">Check the Wayback Machine</button>
+        <button type="button" id="save">Save a new copy at the Internet Archive</button></div>
+      <p class="small" id="links" hidden>Also:
+        <a id="calLink" href="#" target="_blank" rel="noopener noreferrer">all Wayback copies of this address</a> ·
+        <a id="atLink" href="#" target="_blank" rel="noopener noreferrer">archive.today, with the address filled in</a></p>
+      <p class="msg" id="msg" hidden></p>
+
+      <h3>Record a copy you made</h3>
+      <p class="small muted">After Save Page Now or archive.today finishes, copy the address of the archived copy here.
+        A Wayback address carries its own time; for other archives, give the time the archive shows.</p>
+      <div class="field"><label for="capUrl">Archived copy address</label>
+        <input type="text" id="capUrl" inputmode="url" spellcheck="false" autocomplete="off" placeholder="https://web.archive.org/web/20261126140509/https://example.com/article"></div>
+      <div class="field"><label for="capTime">Archive time (UTC), if the address does not carry one</label>
+        <input type="datetime-local" id="capTime" step="1"></div>
+      <div class="actions"><button type="button" id="record">Add to log</button></div>
+      <p class="msg" id="recMsg" hidden></p>
+    </form>
+    <div>
+      <section class="panel" aria-live="polite">
+        <h2>Closest Wayback copy</h2>
+        <div class="results" id="found"><p class="empty">Nothing checked yet.</p></div>
+        <p class="small" id="foundLink" hidden></p>
+        <h3>Citation</h3>
+        <p class="mono ec-cite" id="cite"></p>
+        <div class="actions"><button type="button" id="logFound" disabled>Add this copy to the log</button>
+          <button type="button" id="copyCite" disabled>Copy citation</button></div>
+      </section>
+      <section class="panel">
+        <h2>Capture log</h2>
+        <p class="small muted">Kept in this browser only (its local storage), never sent anywhere. Clearing the
+          browser's site data deletes it, so export it to keep it.</p>
+        <div class="scroll" id="logWrap"><div id="log"><p class="empty">Nothing logged yet.</p></div></div>
+        <div class="actions"><button type="button" id="logAll" hidden>Show all</button></div>
+        <div class="actions"><button type="button" id="csv">Export CSV</button>
+          <button type="button" id="json">Export JSON</button>
+          <button type="button" id="copy">Copy results as JSON</button>
+          <button type="button" id="clear">Clear log</button></div>
+        <p class="msg" id="logMsg" hidden></p>
+      </section>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <h3>What the archives do</h3>
+    <p>The Internet Archive's Wayback Machine (web.archive.org) keeps dated copies of web pages, made by its own
+      crawlers and on request. Each copy has a 14-digit <em>timestamp</em>, YYYYMMDDhhmmss in UTC: 20261126140509 is
+      26 November 2026 at 14:05:09 UTC, the moment the archive fetched the page. archive.today (archive.ph) is a
+      separate, independently run archive that also saves a copy on request and keeps a screenshot of it.</p>
+    <h3>Checking for a copy</h3>
+    <p>"Check the Wayback Machine" asks the Internet Archive's availability API,
+      <code>archive.org/wayback/available?url=…&amp;timestamp=…</code>, for the copy nearest your time (or the most
+      recent copy when you give no time). The answer names the copy's address, its timestamp and the HTTP status the
+      site gave when it was fetched (200 means the page was there; 404, not found; 301 or 302, a redirect to
+      somewhere else, so open the copy and check what it shows). The API looks only at copies of that exact address,
+      and it sometimes answers "none" when copies exist; the "all Wayback copies" link opens the archive's own
+      calendar to check.</p>
+    <h3>Asking for a new copy</h3>
+    <p>"Save a new copy" only opens the Internet Archive's Save Page Now page for the address in a new tab; this page
+      sends nothing itself and uses no key. The archive may ask you to press a button or sign in, and can take a
+      minute. The archive.today link opens its form with the address filled in for you to submit; it often asks you
+      to prove you are a person. Neither archive is run by this toolbox.</p>
+    <h3>What to know before relying on a copy</h3>
+    <ul>
+      <li><strong>A copy is public.</strong> Anyone can find it by the page's address, and the site's owners can see
+        that it was archived.</li>
+      <li><strong>Your request is seen.</strong> The Internet Archive (or archive.today) learns the address you asked
+        about, and when you save a copy the site receives a request from the archive.</li>
+      <li><strong>Some sites block archiving</strong> (by robots.txt rules, by refusing the archive's crawler, or by
+        asking for copies to be withdrawn), and pages behind a login, a paywall, or built by scripts may be saved
+        blank or incomplete. Open the copy and check that it shows what you need.</li>
+      <li><strong>A copy can be removed later</strong> at the site owner's request. For anything important, keep your
+        own copy too (a saved page file or screenshots), and note the time.</li>
+      <li><strong>This is a record of what an archive saw, not a forensic chain of custody.</strong> The archive's
+        timestamp is when its crawler fetched the page; what the page showed to other visitors, regions or devices
+        can differ.</li>
+    </ul>
+    <h3>The address</h3>
+    <p>The address is cleaned before it is sent: https:// is added when you give none, only http and https are
+      allowed, an address with a user name or password in it is refused (it would be sent to the archive), private
+      and local addresses (such as 192.168.x.x or localhost) are refused because a public archive cannot reach them,
+      and the fragment after # is dropped. The path and query are kept exactly, since a different query can be a
+      different page; remove tracking parameters yourself if you do not want them recorded.</p>
+    <h3>The log and its exports</h3>
+    <p>Each log entry holds the page address, the time you checked or recorded it (UTC), the archived copy's address
+      and timestamp, how it was recorded, your note and a citation line:</p>
+    <p class="formula">“Title.” Page URL. Archived by Archive, captured YYYY-MM-DD hh:mm:ss UTC: archived URL. Checked YYYY-MM-DD hh:mm:ss UTC.</p>
+    <p>CSV follows RFC 4180 (values with commas, quotes or line breaks in double quotes, UTF-8, CRLF line ends). A
+      value that starts with =, +, -, @ or a tab gets a leading apostrophe so that a spreadsheet shows it as text
+      instead of running it as a formula; JSON keeps the values exactly.</p>
+    <h3>Services and their terms</h3>
+    <p class="small">Internet Archive Wayback Machine availability API and Save Page Now: free, no key; use is under
+      the Internet Archive's terms of use, and its availability API is called from your browser only when you press
+      the button. archive.today: free, run independently; this page only links to it. If the availability API
+      refuses the request from the browser, the page says so and gives the request as a link to open yourself.</p>
+    <p class="small muted">References: WHATWG URL Standard; RFC 3986 (URI syntax); RFC 4180 (CSV); OWASP, "CSV
+      Injection"; RFC 1918, 3927 and 6598 (private, link-local and shared address ranges); Internet Archive, "Wayback
+      Machine APIs" (availability API). Test: <code>tests/evidence-capture.test.js</code> (address cleaning and
+      refusals; timestamp 20130919044612 is 2013-09-19 04:46:12 UTC, 20230229 is refused; the availability API's
+      documented example answer; CSV quoting and formula guarding; the citation line).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Runs in your browser. A page address is sent to the Internet Archive only when you press Check, and opened at an archive only when you click to save; your log stays in this browser.</div></footer>
+</body>
+</html>

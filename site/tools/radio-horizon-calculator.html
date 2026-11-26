@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radio Horizon Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Radio and optical horizon for one or two antenna heights, the longest line of sight between them, the first Fresnel zone and the Earth bulge, over a smooth Earth.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="radio-horizon-calculator.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/radio-horizon.js"></script>
+<script src="radio-horizon-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms · Geography and maps</p>
+  <h1>Radio Horizon Calculator</h1>
+  <p class="lede">How far an antenna, a mast or an observer can see over a smooth Earth before the curve of the planet
+    gets in the way: the <em>horizon</em> for each of two heights, the longest distance at which the two can still
+    see each other, and whether they can at a given distance. For a radio link it also gives the <em>first Fresnel
+    zone</em> (the football-shaped region around the straight line that should stay clear for full signal) and the
+    <em>Earth bulge</em> (how far the ground rises above the straight line joining the two ends' feet).</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="row2">
+        <div class="field"><label for="h1">Height of A (m)</label>
+          <input type="number" id="h1" step="any" min="0" value="30">
+          <span class="hint">Above the ground or sea surface below it.</span></div>
+        <div class="field"><label for="h2">Height of B (m)</label>
+          <input type="number" id="h2" step="any" min="0" value="10">
+          <span class="hint">Leave empty for one height only.</span></div>
+      </div>
+      <div class="field"><label for="k">Refraction (effective Earth radius factor k)</label>
+        <select id="k">
+          <option value="radio">Radio, standard atmosphere: k = 4/3</option>
+          <option value="optical">Light by day: k = 7/6</option>
+          <option value="geometric">None, geometric Earth: k = 1</option>
+          <option value="other">Other k…</option>
+        </select>
+        <span class="hint">The air bends a ray slightly back toward the ground, so it reaches past the geometric horizon. The model draws rays straight over an Earth k times its real size.</span></div>
+      <div class="field" id="kOtherRow" hidden><label for="kOther">k</label>
+        <input type="number" id="kOther" step="any" min="0.1" max="100" value="1.33">
+        <span class="hint">Below 1 for sub-refraction (a ray bending up, as in some fogs); 2 to 4 or more in strong super-refraction.</span></div>
+      <h2>Link between A and B</h2>
+      <div class="row2">
+        <div class="field"><label for="dist">Distance A to B (km)</label>
+          <input type="number" id="dist" step="any" min="0" value="30">
+          <span class="hint">Along the ground. Empty to skip the link check.</span></div>
+        <div class="field"><label for="freq">Frequency (GHz)</label>
+          <input type="number" id="freq" step="any" min="0" value="2.4">
+          <span class="hint">For the Fresnel zone. 0.1 GHz is 100 MHz. Empty to skip it.</span></div>
+      </div>
+      <div class="field"><label for="point">Point on the path, distance from A (km)</label>
+        <input type="number" id="point" step="any" min="0">
+        <span class="hint">Where to give the Fresnel radius and the bulge. Empty for mid-path.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3 id="linkHead" hidden>Can A and B see each other?</h3>
+      <div class="results" id="link"></div>
+      <h3 id="pointHead" hidden>At the chosen point</h3>
+      <div class="results" id="pointRes"></div>
+      <div id="profile" class="rh-gap"></div>
+      <h3>Horizon for each refraction model</h3>
+      <div id="table"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Air gets thinner with height, so its refractive index falls and a ray bends slightly back toward the ground.
+      The standard way to allow for this is to draw the ray straight and make the Earth bigger: an effective radius
+      a = k R, with R the Earth's mean radius (6,371 km). For radio waves in an average atmosphere k = 4/3 (ITU-R
+      Recommendations P.453 and P.834, the basis of the path profiles in P.452 and P.526). For light, a refraction
+      coefficient of about 1/7 gives k = 7/6; surveyors commonly use 0.13 to 0.14. k = 1 is the bare geometry.</p>
+    <p class="formula">horizon d = √(2 k R h) &nbsp;&nbsp; d (km) = 4.12 √(h in m) for k = 4/3, 3.86 √h for k = 7/6, 3.57 √h for k = 1</p>
+    <p>Two heights can see each other out to the sum of their horizons. At a shorter distance D the page works out
+      how high the straight line between the two tops passes above the smooth surface at every point between them;
+      for distance x from A that is h<sub>A</sub> + (h<sub>B</sub> − h<sub>A</sub>) x / D − x (D − x) / (2 a). The last
+      term is the <em>Earth bulge</em>: at a point d1 from one end and d2 from the other it is d1 d2 / (2 a), which in
+      metres for d in km is d1 d2 / (12.74 k), about d1 d2 / 17 for radio.</p>
+    <p class="formula">first Fresnel zone radius r1 = √(λ d1 d2 / d) = 17.31 √(d1 d2 / (f d)) &nbsp; (r in m, d in km, f in GHz)</p>
+    <p>The first Fresnel zone is the region around the straight line in which a reflected or diffracted path is less
+      than half a wavelength longer than the direct one (ITU-R P.530 and P.526; the coefficient is often rounded to
+      17.3 or 17.32, which takes the speed of light as 300,000 km/s; this page uses the exact value). Keeping 60 % of
+      r1 clear of the ground leaves the extra loss from diffraction close to 0 dB, which is why link planners use it.
+      The page checks 0.6 r1 against the smooth surface along the whole path and, when it is not met, gives the
+      height at B that would meet it.</p>
+    <p>Limits:</p>
+    <ul>
+      <li>The Earth is smooth here: no hills, buildings or trees. Over land, use a terrain profile (the Viewshed
+        Calculator does this for sight lines) and add the bulge to the ground heights.</li>
+      <li>k varies with the weather. Radio links are often planned for k as low as 2/3 for part of the time, and
+        temperature inversions over water can trap signals well past the horizon (ducting). Near the ground, light
+        bends by very different amounts on a cold, still morning and a hot afternoon.</li>
+      <li>Heights are above the local surface, not above sea level, unless the path is over sea. The horizon
+        distance is the straight-line tangent distance; it equals the distance along the ground to well under 0.01 %
+        at these heights.</li>
+      <li>Optical visibility also depends on haze and on how small the target looks; this page gives only the
+        geometry.</li>
+    </ul>
+    <p>The page uses no outside service and no library: the maths is in <code>lib/radio-horizon.js</code>.</p>
+    <p class="small muted">References: ITU-R P.453 and P.834 (refractivity, effective Earth radius factor k = 4/3);
+      ITU-R P.452 and P.526 (effective-Earth path profiles, diffraction, 0.6 r1 clearance); ITU-R P.530 (Fresnel zone
+      radius for line-of-sight links). Test: <code>tests/radio-horizon.test.js</code> (a 10 m antenna's radio horizon
+      is 13.03 km; 30 m and 10 m see each other to 35.61 km; r1 at the middle of a 10 km, 2.4 GHz path is 17.67 m; the
+      bulge at the middle of a 50 km path is 36.79 m).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

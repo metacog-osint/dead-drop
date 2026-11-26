@@ -1,0 +1,10 @@
+/* Radio Horizon Calculator: gaps and the path profile figure. */
+.rh-gap { margin-top: 14px; }
+.rh-ground { fill: var(--border); stroke: var(--muted); stroke-width: 1; }
+.rh-zone { fill: var(--accent); fill-opacity: 0.12; stroke: var(--accent); stroke-opacity: 0.5; stroke-width: 1; }
+.rh-zone60 { fill: none; stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; }
+.rh-sight { fill: none; stroke-width: 2; }
+.rh-sight.ok { stroke: var(--ok); }
+.rh-sight.bad { stroke: var(--alarm); stroke-dasharray: 6 4; }
+.rh-mast { stroke: var(--text); stroke-width: 2; }
+.rh-point { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; }

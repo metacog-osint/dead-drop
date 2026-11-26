@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOTAM Decoder · Dead Drop Toolbox</title>
+<meta name="description" content="Decodes a pasted ICAO-format NOTAM field by field, from the Q line's NOTAM Code to items A to G, and maps its circle, points and polygons.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/notam-decoder.js"></script>
+<script src="notam-decoder.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Reference · Geography and maps</p>
+  <h1>NOTAM Decoder</h1>
+  <p class="lede">A NOTAM (notice to air missions) tells pilots and operators about a change or hazard that matters
+    to flying: a closed runway, a navigation aid out of service, rocket or missile firing, a drone operation. This
+    page takes a NOTAM you paste in the international ICAO format and spells out each part in plain words: who issued
+    it, what it is about and what state it describes (from its five-letter <em>Q code</em>), where and between which
+    heights it applies, and when. It draws the NOTAM's circle and any positions or areas in its text on a map. It
+    decodes only the text you give it: it is not a source of current NOTAMs and must not be used for flight
+    planning.</p>
+  <div class="tool wide">
+    <form class="panel" id="form" novalidate>
+      <h2>NOTAM text</h2>
+      <div class="field"><label for="sample">Example NOTAMs (made up for this page)</label>
+        <select id="sample"></select></div>
+      <div class="field"><label for="text">Paste one ICAO-format NOTAM</label>
+        <textarea id="text" rows="9" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">From the opening bracket and series number (for example <span class="mono">(A1234/26 NOTAMN</span>)
+          to item E, F or G. Times in a NOTAM are UTC.</span></div>
+      <div class="actions"><button class="primary" type="submit">Decode</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <div id="problems"></div>
+      <h3>Field by field</h3>
+      <div id="fields"></div>
+      <h3>Map</h3>
+      <p class="small muted">Dashed blue: the Q-line circle (the NOTAM's search area, rounded). Red: areas, lines,
+        circles and positions found in item E. Click a shape for its source text.</p>
+      <div id="map" class="map" aria-label="Map of the NOTAM's circle and item E geometry"></div>
+      <h3>Geometry found in item E</h3>
+      <div class="scroll" id="geom"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+      <h3>Abbreviations in item E</h3>
+      <div id="abbr"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>The format.</strong> An ICAO-format NOTAM opens with its series letter, number and year
+      (<span class="mono">A1234/26</span>) and its type: NOTAMN (new), NOTAMR (replaces the NOTAM it names) or NOTAMC
+      (cancels the NOTAM it names). Then come the lettered items:</p>
+    <ul>
+      <li><strong>Q)</strong> the qualifier line, eight fields separated by "/": the flight information region (FIR,
+        the airspace an air traffic unit is responsible for), the NOTAM Code, the traffic it concerns (I for flights
+        under instrument flight rules, V for visual flight rules, IV for both), its purpose (N immediate attention, B
+        pre-flight bulletins, O significant for operations, M miscellaneous), its scope (A aerodrome, E en route, W
+        navigation warning), the lower and upper limits as three-digit flight levels (hundreds of feet on the
+        standard pressure setting; 000 and 999 mean no limit), and a centre and radius: latitude and longitude to the
+        whole minute and a radius in nautical miles (1 NM = 1,852 m).</li>
+      <li><strong>The NOTAM Code</strong> is Q plus four letters: the second and third give the subject (for example
+        RD, danger area) and the fourth and fifth its condition (for example CA, activated). XX means the subject or
+        condition is in plain language in item E, and TT marks a trigger NOTAM that points to a published amendment.</li>
+      <li><strong>A)</strong> the aerodrome or FIR it applies to (four-letter ICAO location indicators);
+        <strong>B)</strong> start and <strong>C)</strong> end, each as YYMMDDhhmm in UTC. "EST" after C means the end
+        time is an estimate and another NOTAM will replace or cancel this one; "PERM" means a permanent change, which the
+        state later puts into its aeronautical information publication (AIP) before cancelling the NOTAM.</li>
+      <li><strong>D)</strong> a schedule within B to C, if any; <strong>E)</strong> the text; <strong>F)</strong> and
+        <strong>G)</strong> the lower and upper limits in the units the issuer chose (SFC surface, GND ground, UNL
+        unlimited, feet or metres above mean sea level or ground level, or a flight level). Where F and G are given
+        they are the limits; the Q-line levels are rounded for automatic filtering.</li>
+    </ul>
+    <p><strong>Checks.</strong> The page reports each field it cannot read, with the reason, rather than guessing:
+      a Q line without eight fields, an unknown letter, lower above upper, minutes of 60 or more, a date that does not
+      exist, C not after B, a NOTAMR or NOTAMC that names no NOTAM. A Q code not in the table is reported as unknown,
+      since states also use local codes. It also warns when a shape in item E reaches more than 1 NM beyond the
+      Q-line circle (the Q centre is rounded to the minute, up to about 0.7 NM). "In force" compares B and C with your
+      computer's clock and does not read item D's schedule.</p>
+    <p><strong>Geometry in item E.</strong> Coordinates are recognised in the forms <span class="mono">4530N01230E</span>
+      (degrees and minutes), <span class="mono">453012N0123045E</span> (degrees, minutes and seconds),
+      <span class="mono">4530.50N01230.25E</span> (decimal minutes), decimal seconds, and hemisphere-first
+      <span class="mono">N453012E0123045</span>. Coordinates joined only by dashes, commas, spaces or "TO" form a run:
+      three or more make an area (closed back to the first point), two a line. A single coordinate with a radius in
+      the same sentence ("5NM RADIUS OF", "RADIUS 10KM", "WI 3NM OF") is drawn as a circle; otherwise as a point.
+      Circles are drawn as true great circles on a sphere of radius 6,371 km (destination-point formula, Veness).</p>
+    <p><strong>Limits.</strong> Boundaries that follow a border, a coastline or an arc ("THEN ALONG THE FIR
+      BOUNDARY", "CLOCKWISE ARC") are not drawn; the page draws straight segments between the listed points, which
+      can differ from the real boundary. Areas that cross the 180° meridian are not handled. Several areas in one
+      text are separated only by the words between them, so check every shape against item E. US domestic-format
+      NOTAMs (starting with "!") are a different format and are refused. The abbreviation list is a selection.
+      This page decodes text; it does not fetch, check or update NOTAMs, and nothing it shows is an official
+      briefing. For flying, use an official NOTAM briefing service.</p>
+    <p>Services used: map tiles from OpenStreetMap (© OpenStreetMap contributors, data under the Open Database
+      Licence; tile use under the OpenStreetMap Foundation's tile usage policy). The NOTAM text never leaves your
+      browser.</p>
+    <p class="small muted">References: ICAO PANS-AIM (Doc 10066), Appendix 3 (NOTAM format), and ICAO Doc 8126,
+      Aeronautical Information Services Manual (NOTAM chapter); the NOTAM Code and abbreviations from ICAO Doc 8400,
+      PANS-ABC; Chris Veness, "Calculate distance, bearing and more between latitude/longitude points"
+      (movable-type.co.uk). Test: <code>tests/notam-decoder.test.js</code> (four sample NOTAMs: a danger-area polygon
+      with vertex 452000N0094000E = 45.333333° N, 9.666667° E; a PERM crane obstacle at 500210N0083412E = 50.036111° N,
+      8.570000° E; a NOTAMR with an EST end and a 5 NM circle at 2830.50N08035.25W = 28.508333° N, 80.587500° W; and a
+      broken NOTAM whose five errors are each reported).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the NOTAM text you paste is not sent anywhere.</div></footer>
+</body>
+</html>

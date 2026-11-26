@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Past Weather · Dead Drop Toolbox</title>
+<meta name="description" content="Weather at a past time and place: hourly ERA5 reanalysis from Open-Meteo and airport METAR reports from the Iowa Environmental Mesonet, decoded, with humidity, wind chill and heat index.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="past-weather.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/distance-bearing.js"></script>
+<script src="../lib/launch-weather.js"></script>
+<script src="../lib/past-weather.js"></script>
+<script src="past-weather.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Reference · Weather</p>
+  <h1>Past Weather</h1>
+  <p class="lede">What the weather was at a place and time in the past, from two free archives. The first is
+    <em>ERA5 reanalysis</em>: a weather model re-run over the past with the observations of the day, giving an
+    hourly estimate for any point on Earth since 1940, but averaged over a grid square about 30 km across. The second
+    is <em>METAR</em> reports, the routine weather observations airports send every hour or so, measured at the
+    airport itself. Use the reanalysis where there is no airport nearby; use the airport reports when one is close,
+    because they are real measurements.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Place and time</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (degrees)</label>
+          <input type="number" id="lat" step="any" min="-90" max="90" value="46.8772">
+          <span class="hint">North positive.</span></div>
+        <div class="field"><label for="lon">Longitude (degrees)</label>
+          <input type="number" id="lon" step="any" min="-180" max="180" value="-96.7898">
+          <span class="hint">East positive, west negative.</span></div>
+      </div>
+      <div class="field"><label for="when">Date and time (UTC)</label>
+        <input type="datetime-local" id="when" step="60">
+        <span class="hint">Entered and stored in UTC, 24-hour clock.</span></div>
+      <div class="field"><label for="window">Hours either side</label>
+        <select id="window">
+          <option value="3">3 hours</option>
+          <option value="6" selected>6 hours</option>
+          <option value="12">12 hours</option>
+        </select>
+        <span class="hint">How much of the day around that time to list.</span></div>
+      <div class="actions"><button class="primary" type="submit" id="getEra5">Get reanalysis (Open-Meteo, ERA5)</button></div>
+
+      <h3>Airport reports</h3>
+      <div class="field"><label for="station">Station identifier</label>
+        <input type="text" id="station" maxlength="4" spellcheck="false" autocomplete="off" placeholder="e.g. KFAR" value="KFAR">
+        <span class="hint">The airport's four-letter ICAO code, or a three-letter US code. US codes starting with K are
+          sent without the K, the way the Iowa Environmental Mesonet lists them (KFAR is FAR).</span></div>
+      <label class="check"><input type="checkbox" id="asTyped"> Send the identifier exactly as typed</label>
+      <div class="actions"><button type="button" id="getMetar">Get METARs (Iowa Environmental Mesonet)</button></div>
+      <p class="small muted">Nothing is fetched until you press a button. The reanalysis button asks Open-Meteo for
+        the hours around your time at your point; the METAR button asks the Iowa Environmental Mesonet for one
+        station's reports over the same hours.</p>
+
+      <h3>Decode a METAR you already have</h3>
+      <div class="field"><label for="paste">METAR or SPECI text</label>
+        <textarea id="paste" rows="3" spellcheck="false" placeholder="KFAR 151753Z 31015G25KT 1 1/2SM -SN BR BKN008 OVC015 M12/M15 A3002"></textarea></div>
+      <div class="actions"><button type="button" id="decode">Decode</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <div>
+      <section class="panel" aria-live="polite">
+        <h2>Reanalysis at your point</h2>
+        <p class="small muted">A model estimate for the grid square, not a measurement. ERA5's squares are 0.25° of
+          latitude and longitude (about 28 km north to south). Values are typical of the whole square, so a valley,
+          a coast or a city inside it can differ by several degrees, and showers smaller than the square are
+          smeared out or missed.</p>
+        <p class="small" id="era5Moment"></p>
+        <div class="results" id="era5"></div>
+        <h3>Hour by hour</h3>
+        <div class="scroll" id="era5Wrap"><div id="era5Hours"><p class="empty">Nothing loaded yet.</p></div></div>
+        <div class="actions"><button type="button" id="era5All" hidden>Show all</button></div>
+        <p class="small muted">Weather data by <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a>
+          (CC BY 4.0), from ERA5, Copernicus Climate Change Service (C3S).</p>
+      </section>
+      <section class="panel" aria-live="polite">
+        <h2>Airport observations</h2>
+        <p class="small muted">Measured at the airport by its weather station (often automated), in the format pilots
+          use. Each report is for the moment it was made, usually just before the hour.</p>
+        <p class="msg" id="metarMsg" hidden></p>
+        <p class="small" id="metarLink" hidden></p>
+        <p class="small" id="metarMoment"></p>
+        <p class="mono pw-raw" id="metarRaw"></p>
+        <div class="results" id="metarDecoded"></div>
+        <div id="metarExtra"></div>
+        <h3>All reports in the window</h3>
+        <div class="scroll" id="metarWrap"><div id="metarList"><p class="empty">Nothing loaded yet.</p></div></div>
+        <div class="actions"><button type="button" id="metarAll" hidden>Show all</button></div>
+        <p class="small muted">METAR archive: <a href="https://mesonet.agron.iastate.edu/request/download.phtml" rel="noopener">Iowa
+          Environmental Mesonet</a>, Iowa State University.</p>
+      </section>
+      <section class="panel">
+        <h2>Upper air</h2>
+        <p class="small">Soundings, the weather balloon profiles of temperature, humidity and wind with height, are
+          launched twice a day (00 and 12 UTC) from a few hundred places. This page does not fetch them. Two free
+          archives to look them up by station and time:
+          <a href="https://weather.uwyo.edu/upperair/" rel="noopener">University of Wyoming, upper air</a> and
+          <a href="https://mesonet.agron.iastate.edu/archive/raob/" rel="noopener">Iowa Environmental Mesonet, RAOB archive</a>.</p>
+      </section>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <h3>Reanalysis and observation</h3>
+    <p>A <em>reanalysis</em> runs one fixed version of a weather forecast model over past decades, pulling it towards
+      the observations that were made at the time (stations, balloons, ships, aircraft, satellites). The result is a
+      complete hourly record everywhere, including where nobody measured anything, but it is still a model: each value
+      stands for a grid square about 30 km across and the model's own terrain, not for a spot. An
+      <em>observation</em> is a measurement at one place, here an airport's weather station, and is the better record
+      for that place. Where both exist, the airport report wins for that airport; the reanalysis fills the gaps
+      between airports.</p>
+    <h3>ERA5 through Open-Meteo</h3>
+    <p>The page asks Open-Meteo's Historical Weather API (archive-api.open-meteo.com) for the ERA5 model
+      (<code>models=era5</code>) at your latitude and longitude, for the UTC days covering your time plus and minus
+      the hours you chose, and takes the hour nearest your time (on a tie, the earlier hour). Open-Meteo answers for
+      the grid point it used; the page shows that point and how far it is from yours. ERA5 is published about five
+      days behind real time, so the last few days may be empty. Temperature and dew point are 2 m above the ground,
+      wind 10 m above it; precipitation and snowfall are totals for the hour before the time shown; cloud cover is
+      the percentage of the sky. The "weather" words are Open-Meteo's code (WMO table 4677) worked out from the
+      model's cloud and precipitation, not something anyone saw. Wind is asked for in knots.</p>
+    <h3>METAR through the Iowa Environmental Mesonet</h3>
+    <p>The page asks the Mesonet's ASOS download service (mesonet.agron.iastate.edu, <code>cgi-bin/request/asos.py</code>)
+      for the station's routine and special reports over the window, as comma-separated text in UTC, and decodes the
+      one nearest your time. The decoding follows WMO No. 306, <em>Manual on Codes</em>, FM 15 METAR and FM 16 SPECI,
+      and the US forms in the FAA's <em>Aeronautical Information Manual</em>, section 7-1:</p>
+    <ul>
+      <li><strong>Wind</strong>: direction the wind blows from, in degrees true, speed and gust in knots (m/s and km/h
+        converted: 1 kt = 1.852 km/h); VRB is variable, and dddVddd the range it varies over.</li>
+      <li><strong>Visibility</strong>: metres (9999 is 10 km or more) or US statute miles (1 SM = 1,609.344 m; P6SM is
+        more than 6, M1/4SM less than a quarter). CAVOK means visibility 10 km or more, no cloud below 5,000 ft and
+        no significant weather. Runway visual range (R groups) is listed as sent.</li>
+      <li><strong>Weather</strong>: intensity (- light, + heavy, VC in the vicinity), descriptor and phenomenon from WMO
+        code table 4678, such as -SN light snow, +TSRA thunderstorm with heavy rain (the intensity is the rain's), FZFG freezing fog.</li>
+      <li><strong>Cloud</strong>: FEW, SCT, BKN, OVC with the base in hundreds of feet above the airport, CB
+        (cumulonimbus) or TCU (towering cumulus); VV is the vertical visibility into fog or snow. The
+        <em>ceiling</em> is the lowest broken or overcast layer, or the vertical visibility (14 CFR 1.1).</li>
+      <li><strong>Temperature / dew point</strong> in whole °C, M for minus. In US remarks the T group gives both to a
+        tenth of a degree (T11221150 is -12.2 / -15.0 °C), and SLP the sea-level pressure (SLP215 is 1,021.5 hPa,
+        SLP982 is 998.2 hPa), per the Federal Meteorological Handbook No. 1, chapter 12.</li>
+      <li><strong>Altimeter</strong>: A in hundredths of an inch of mercury (A3002 is 30.02 inHg) or Q, the QNH, in
+        hectopascals; converted with 1 inHg = 33.8639 hPa. The altimeter setting is pressure reduced to sea level
+        by the standard atmosphere and is not the same figure as the sea-level pressure in remarks.</li>
+    </ul>
+    <p>Groups the page does not decode (recent weather, wind shear, runway state, most remarks) are listed as they
+      came, never guessed. Trend groups (NOSIG, BECMG, TEMPO) are shown as text.</p>
+    <h3>Derived values</h3>
+    <p class="formula">RH = 100 · es(Td) / es(T),&nbsp; es(T) = 6.1094 · exp(17.625 T / (T + 243.04)) hPa</p>
+    <p>Relative humidity, how close the air is to saturation, from the temperature and dew point by the Magnus
+      formula with the constants of Alduchov and Eskridge (1996), within about 0.4 % of the exact saturation vapour pressure between -40 and 50 °C over
+      water. Open-Meteo's own humidity figure is shown beside it.</p>
+    <p class="formula">Wind chill (°F) = 35.74 + 0.6215 T − 35.75 V^0.16 + 0.4275 T V^0.16</p>
+    <p>The US National Weather Service wind chill (2001), T in °F and V the 10 m wind in mph, shown only at 50 °F
+      (10 °C) or below with wind above 3 mph, where it is defined. The heat index, how hot it feels in the shade with a
+      light wind, is the NWS equation (Rothfusz regression, with Steadman's simple form below 80 °F and the NWS's
+      adjustments for very dry and very humid air), shown from 80 °F (26.7 °C), where the NWS chart begins. Both are
+      worked from the 2 m temperature and 10 m wind, as the NWS does. A heat index of 103 °F (39.4 °C) or more is
+      shaded: the NWS calls that range "danger".</p>
+    <h3>Services and their terms</h3>
+    <p class="small">Open-Meteo: free without a key for non-commercial use, within its daily request limits; its data
+      are licensed CC BY 4.0 and must be credited, as on this page. ERA5: Hersbach et al. (2020), "The ERA5 global
+      reanalysis", <em>Quarterly Journal of the Royal Meteorological Society</em> 146, 1999-2049; Copernicus Climate
+      Change Service. Iowa Environmental Mesonet: free, no key, run by Iowa State University's Department of
+      Agronomy; it asks users to credit it and to keep automated requests modest. If a service refuses the request
+      from the browser, the page says so and gives the request as a link you can open yourself, and you can paste the
+      reports into the decoder.</p>
+    <p class="small muted">References: WMO No. 306, <em>Manual on Codes</em>, Vol. I.1, FM 15 / FM 16 and code table
+      4678; FAA <em>Aeronautical Information Manual</em> 7-1; Federal Meteorological Handbook No. 1, chapter 12;
+      Alduchov and Eskridge (1996), <em>Journal of Applied Meteorology</em> 35, 601-609; NWS wind chill chart (2001);
+      Rothfusz (1990), NWS Technical Attachment SR 90-23. Test: <code>tests/past-weather.test.js</code> (decoding of
+      KFAR, UUEE, EGLL, LFPG and KDEN reports: 30.02 inHg is 1,016.59 hPa, 1 1/2 SM is 2,414 m; RH 52.54 % at 20 / 10 °C;
+      heat index 100, 121, 132 and 109 °F from the NWS chart; wind chill -19 °F at 0 °F and 15 mph; the nearest-hour
+      picker and the request URLs).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Runs in your browser. Your place and time are sent to Open-Meteo, and your station identifier to the Iowa Environmental Mesonet, only when you press their buttons; your inputs stay in this browser.</div></footer>
+</body>
+</html>

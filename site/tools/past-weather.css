@@ -1,0 +1,6 @@
+/* Past Weather: raw report text and small table buttons. */
+.pw-raw { overflow-wrap: anywhere; background: var(--bg); padding: 6px 8px; border-radius: 4px; margin: 8px 0; }
+.pw-raw:empty { display: none; }
+.scroll.all { max-height: none; }
+table.data td button { font-size: 13px; padding: 2px 8px; }
+table.data td.mono, table.data td .mono { overflow-wrap: anywhere; }

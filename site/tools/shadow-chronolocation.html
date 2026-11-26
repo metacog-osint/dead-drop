@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shadow Chronolocation · Dead Drop Toolbox</title>
+<meta name="description" content="Find the times of day a photo could have been taken from the length and direction of a shadow, for a known place and date, with how much each measurement error moves the answer.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/sun-position.js"></script>
+<script src="../lib/shadow-chronolocation.js"></script>
+<script src="shadow-chronolocation.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Time · Images and files</p>
+  <h1>Shadow Chronolocation</h1>
+  <p class="lede"><em>Chronolocation</em> is working out when a photo or video was taken. If you know where and on
+    what day, a shadow in the picture fixes the time: its length against the height of the object casting it gives
+    the Sun's <em>elevation</em> (how high it is above the horizon), and its direction gives the Sun's
+    <em>azimuth</em> (its compass bearing). This page finds the times that day when the Sun stood there, and how far
+    each answer moves for a given error in the measurements.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (degrees)</label>
+          <input type="number" id="lat" step="any" min="-90" max="90" value="40">
+          <span class="hint">North positive.</span></div>
+        <div class="field"><label for="lon">Longitude (degrees)</label>
+          <input type="number" id="lon" step="any" min="-180" max="180" value="0">
+          <span class="hint">East positive, west negative.</span></div>
+      </div>
+      <div class="field"><label for="date">Date at the place</label>
+        <input type="date" id="date" value="2026-06-21">
+        <span class="hint">The calendar day as it was locally. The search runs from local mean midnight to midnight at this longitude, so the answers can fall on the day before or after in UTC.</span></div>
+      <h2>Shadow length</h2>
+      <div class="row2">
+        <div class="field"><label for="h">Object's height</label>
+          <input type="number" id="h" step="any" min="0" value="10">
+          <span class="hint">Base to top, for an upright object.</span></div>
+        <div class="field"><label for="L">Shadow's length</label>
+          <input type="number" id="L" step="any" min="0" value="10">
+          <span class="hint">Base to the shadow's tip, in the same unit.</span></div>
+      </div>
+      <p class="small muted">Empty both to use the direction alone.</p>
+      <h2>Shadow direction</h2>
+      <div class="field"><label for="az">Direction the shadow points (degrees from true north)</label>
+        <input type="number" id="az" step="any" min="0" max="360" value="276">
+        <span class="hint">From the object's base toward the shadow's tip, clockwise from true north (90 east, 180 south). Empty to use the length alone.</span></div>
+      <div class="actions"><button class="primary" type="submit">Find the times</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="small muted" id="day"></p>
+      <div class="results" id="results"></div>
+      <div id="notes"></div>
+      <h3 id="elevHead" hidden>Times that match the shadow's length</h3>
+      <div class="scroll" id="elevTable"></div>
+      <p class="small muted" id="elevNote" hidden>Minutes per degree: how far the time moves for each degree the elevation is off.
+        Ratio 5 % higher or lower: the time if the measured ratio of height to shadow length is 5 % off either way.</p>
+      <h3 id="azHead" hidden>Times that match the shadow's direction</h3>
+      <div class="scroll" id="azTable"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>An upright object of height h on level ground casts a shadow of length L when the Sun's elevation is</p>
+    <p class="formula">elevation = atan(h / L) &nbsp;&nbsp; Sun's azimuth = shadow's direction + 180°</p>
+    <p>The light that casts the shadow has been bent slightly by the atmosphere, so this is the Sun's
+      <em>apparent</em> elevation, and the page matches it against the Sun's position with refraction included
+      (about 0.02° at 45°, half a degree at the horizon). The Sun passes any one elevation twice a day, once climbing
+      in the morning and once sinking in the afternoon, at times roughly the same distance either side of solar noon.
+      A length alone therefore gives two answers; the shadow's direction picks between them. The direction alone can
+      also fix the time, and is less affected by the object's height being unknown.</p>
+    <p>The page works out the Sun's elevation and azimuth every minute through the local solar day, finds each time
+      the value crosses the one measured, and refines it to under a second. The Sun's position comes from the
+      <code>lib/sun-position.js</code> used by the Sun Position Calculator: Meeus's low-accuracy method, the one in
+      NOAA's Solar Calculator, good to about 0.01°. Sensitivity is worked out at each answer: minutes per degree is
+      one over the rate the Sun's elevation (or azimuth) is changing then, and the 5 % figures solve again for
+      atan(1.05 h / L) and atan(0.95 h / L). Near solar noon the elevation barely changes, so a small error in the
+      length moves the time a long way; in the early morning and late afternoon the length is most telling. When both
+      length and direction are given, the page marks the length's answer whose azimuth agrees best, and flags a
+      difference of more than 10° (a rule of thumb for how well a direction can be read from an image, not a
+      standard) as a disagreement worth a second look.</p>
+    <p>What biases the answer:</p>
+    <ul>
+      <li><strong>Slope.</strong> On ground sloping toward the Sun the shadow is shorter, and away from it longer,
+        than on level ground: on a 5° slope facing the Sun at 30° elevation the shadow is about 13 % shorter. Measure on
+        level ground, or allow for the slope.</li>
+      <li><strong>Perspective and lens distortion.</strong> Lengths and angles measured in an ordinary photo are
+        foreshortened by the camera's viewpoint, and wide-angle lenses bend straight lines near the edges. Measure
+        in an overhead image (a satellite or drone view looking straight down) or against something of known size
+        lying in the same plane, and take directions from a map rather than from the photo.</li>
+      <li><strong>The object.</strong> It must stand upright, and its height must be measured from the ground where
+        the shadow starts. A leaning pole or a shadow that falls on a wall gives the wrong figure.</li>
+      <li><strong>The shadow's edge.</strong> The Sun is half a degree wide, so a shadow's tip is soft. Its middle
+        corresponds to the Sun's centre, which is what the page uses; measuring to the sharp inner edge or the faint
+        outer edge shifts the elevation by up to about 0.27°.</li>
+      <li><strong>The place and date.</strong> They are taken as known. A wrong date moves the answer by up to a few
+        minutes a day near the equinoxes; a wrong latitude changes everything. Check the azimuth and elevation
+        together, and ideally more than one shadow.</li>
+    </ul>
+    <p>The page uses no outside service and no library: the maths is in <code>lib/shadow-chronolocation.js</code> and
+      <code>lib/sun-position.js</code>.</p>
+    <p class="small muted">References: NOAA Global Monitoring Laboratory, Solar Calculator and its "Solar Calculation
+      Details"; Meeus, <em>Astronomical Algorithms</em>, 2nd ed., chapters 13, 16 and 25; Bellingcat's published
+      guides to chronolocation from shadows, as worked practice. Test: <code>tests/shadow-chronolocation.test.js</code>
+      (on the equator at the March equinox 2026, a shadow as long as its object puts the Sun at 45° at 09:07:24 and
+      15:07:27 UTC, 4.0 minutes per degree; at 40° N on 21 June 2026 at 08:41:34 UTC with the shadow toward 276°, or
+      15:22:05 UTC toward 84°).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

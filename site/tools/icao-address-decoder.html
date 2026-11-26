@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ICAO Address Decoder · Dead Drop Toolbox</title>
+<meta name="description" content="The state of registry for a 24-bit ICAO aircraft address, from the ICAO allocation table, and US N-number to address and back.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/icao-address-decoder.js"></script>
+<script src="icao-address-decoder.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Reference · RF and comms</p>
+  <h1>ICAO Address Decoder</h1>
+  <p class="lede">Every aircraft transponder that answers Mode S radar interrogations, and every ADS-B transmitter
+    (the broadcast that flight-tracking sites pick up), sends a fixed 24-bit number, the <em>ICAO aircraft
+    address</em>, usually written as six hexadecimal characters such as <span class="mono">A061D9</span>. The country
+    that registers the aircraft (the <em>state of registry</em>) assigns it from a block ICAO gives that country. This
+    page says which block an address is in and, for US addresses, turns the address into the aircraft's registration
+    mark (its <em>N-number</em>) and back. The address names a registration block, not an aircraft type, owner or
+    role, and it can be wrong: transponders are sometimes set up with the wrong address, and a transmitter can be made
+    to send any address at all.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Address or N-number</h2>
+      <div class="field"><label for="q">One per line</label>
+        <textarea id="q" rows="6" spellcheck="false" autocomplete="off">A061D9
+3C6589
+N1AB</textarea>
+        <span class="hint">Six hexadecimal characters (0-9, A-F), with or without 0x, or a US N-number such as
+          N12345. Up to 500 lines.</span></div>
+      <div class="actions"><button class="primary" type="submit">Decode</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="small muted" id="first"></p>
+      <div class="results" id="results"></div>
+      <ul class="small" id="notes"></ul>
+      <h3>All lines</h3>
+      <div class="scroll" id="table"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>What the address is.</strong> The ICAO aircraft address is a 24-bit number (16,777,214 usable values)
+      assigned to one airframe by its state of registry. Mode S radar uses it to call one aircraft at a time, ADS-B
+      sends it with every position report, and airborne collision-avoidance systems use it to tell aircraft apart.
+      It stays with the airframe, usually even when the aircraft's flight number changes; it normally changes when
+      the aircraft moves to another country's register.</p>
+    <p><strong>State of registry.</strong> ICAO Annex 10, Volume III, Part I, Chapter 9, Appendix (Table 9-1) gives
+      each state a block of addresses, written there as a fixed run of leading bits. The page looks the address up in
+      that table, transcribed in the page's library as first and last address in hexadecimal. Blocks run from 1,024
+      addresses (small states) to 1,048,576 (the United States and the Russian Federation). An address outside every
+      block is unallocated or held in reserve. The two blocks ICAO keeps for itself (F00000-F07FFF for temporary
+      addresses and F09000-F093FF for special uses) are labelled as such. ICAO does not assign the all-zeros or
+      all-ones address. Amendments to the Annex re-assign blocks from time to time (for example after a state splits),
+      so check a result that matters against the current edition.</p>
+    <p><strong>US N-numbers.</strong> The FAA maps US addresses A00001 to ADF7C7 one-to-one onto the 915,399 possible
+      N-numbers, in a fixed order: N1, N1A, N1AA, N1AB ... N1AZ, N1B ... N1ZZ, then N10, N10A, and so on, with the
+      letters I and O never used. Counting N-numbers in that order gives the address directly, and dividing an
+      address back out gives the N-number:</p>
+    <p class="formula">run(k) = number of N-numbers starting with a k-digit prefix: run(5) = 1, run(4) = 35,
+      run(3) = 951, run(2) = 10,111, run(1) = 101,711</p>
+    <p>so N1 = A00001, N2 = A00001 + 101,711 = A18D50, N12345 = A061D9 and N99999 = ADF7C7. The FAA aircraft registry
+      publishes each registered aircraft's code beside its N-number (its "Mode S code", in octal and hexadecimal; the
+      octal form is shown here too). The conversion works whether or not the N-number is currently assigned: an
+      unregistered N-number still has its address, and a decoded N-number may belong to no aircraft today.</p>
+    <p><strong>Military blocks.</strong> ICAO does not publish military sub-blocks, and states do not either. Ranges
+      that open-source ADS-B software flags are shown only as "community-reported, not ICAO", and the page never
+      states that an aircraft is military. The US range above ADF7C7 is outside the N-number sequence; what uses it
+      is not published.</p>
+    <p><strong>Limits.</strong> A decoded state is where the address was allocated, which is normally but not always
+      where the aircraft is registered now: an aircraft sold abroad can keep its old address for a while, a
+      transponder can be set up with a wrong or default address, and test equipment or a deliberately altered
+      transmitter can send any address, including one copied from another aircraft. Some aircraft send no ADS-B, or
+      send a temporary or privacy address (the FAA's privacy programme issues addresses not tied to the owner's
+      N-number). Treat the result as one clue to check against the registry, the flight's track and other sources.</p>
+    <p class="small muted">Reference: ICAO Annex 10, Aeronautical Telecommunications, Volume III, Part I, Chapter 9
+      and its Appendix, Table 9-1, "Allocation of aircraft addresses to States". Test:
+      <code>tests/icao-address-decoder.test.js</code> (hand-counted pairs N1 = A00001, N2 = A18D50, N12345 = A061D9,
+      N99999 = ADF7C7; all 915,399 US addresses round-trip; table blocks checked for overlaps and alignment).
+      Everything runs in your browser; nothing is looked up online.</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>
