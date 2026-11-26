@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slant Range Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Straight-line distance from an observer to a satellite, from its altitude and elevation angle, with the signal delay.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/slant-range.js"></script>
+<script src="slant-range-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · RF and comms</p>
+  <h1>Slant Range Calculator</h1>
+  <p class="lede">The straight-line distance from an observer to a satellite, from the satellite's altitude and how
+    high it stands above the observer's horizon (its <em>elevation angle</em>), and how long a radio signal takes to
+    cover it.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="altitude">Satellite altitude (km)</label>
+        <input type="number" id="altitude" step="any" value="550">
+        <span class="hint">Height above the Earth's surface. Low Earth orbit is about 300 to 2,000 km; geostationary is 35,786 km.</span></div>
+      <div class="field"><label for="elevation">Elevation angle (degrees)</label>
+        <input type="number" id="elevation" min="0" max="90" step="any" value="45">
+        <span class="hint">0 is on the horizon, 90 is straight overhead.</span></div>
+      <div class="field"><label for="observerAlt">Observer altitude (km)</label>
+        <input type="number" id="observerAlt" step="any" value="0">
+        <span class="hint">0 for sea level; 1.6 for Denver.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Earth is treated as a sphere of radius 6,371 km. With the observer at radius R<sub>o</sub> and the
+      satellite at R<sub>s</sub>, the angle at the satellite between the observer and straight down (the
+      <em>nadir angle</em>, η) and the angle at the Earth's centre between the two (the <em>central angle</em>, λ) are</p>
+    <p class="formula">sin η = (R<sub>o</sub> / R<sub>s</sub>) cos(elevation) &nbsp;&nbsp; λ = 90° − elevation − η</p>
+    <p>and the slant range follows from the law of cosines,
+      <span class="mono">range² = R<sub>o</sub>² + R<sub>s</sub>² − 2 R<sub>o</sub> R<sub>s</sub> cos λ</span>.
+      Ground range is the arc λ along the surface. The delay is the range divided by the speed of light in a vacuum;
+      the atmosphere adds a little.</p>
+    <p class="small muted">Reference: Wertz and Larson, <em>Space Mission Analysis and Design</em>, 3rd ed., section 5.2.
+      Test: <code>tests/slant-range.test.js</code> (550 km at 45° gives 749.2 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>
