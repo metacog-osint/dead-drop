@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Site Database · Dead Drop Toolbox</title>
+<meta name="description" content="A checked reference list of 49 orbital, suborbital and test launch sites worldwide, with a map, filters, distances and upcoming launches.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="launch-site-database.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/launch-sites.js"></script>
+<script src="../lib/launch-weather.js"></script>
+<script src="launch-site-database.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Launch · Reference</p>
+  <h1>Launch Site Database</h1>
+  <p class="lede">A reference list of 49 places rockets are launched from, or are planned to be: orbital spaceports,
+    suborbital and air-launch (<em>horizontal</em>) sites, and missile test ranges, with who runs each, when it first
+    launched and its main pads. Filter the list, sort it by distance from any point, compare sites, and, if you
+    choose, look up a site's current weather or the next launches scheduled there.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="text">Search</label>
+        <input type="text" id="text" autocomplete="off">
+        <span class="hint">Name, place, country or operator.</span></div>
+      <div class="field"><label for="launchType">Launch type</label>
+        <select id="launchType"><option value="all">All types</option></select></div>
+      <div class="field"><label for="country">Country</label>
+        <select id="country"><option value="all">All countries</option></select>
+        <span class="hint">The country the site is in, not who uses it.</span></div>
+      <div class="field"><label for="status">Status</label>
+        <select id="status"><option value="all">Any status</option></select></div>
+      <div class="field"><label for="era">First launch</label>
+        <select id="era"><option value="all">Any time</option></select></div>
+      <div class="field"><label for="capability">Used for</label>
+        <select id="capability"><option value="all">Anything</option></select></div>
+      <div class="field"><label>Distance from (optional)</label>
+        <div class="row2">
+          <input type="number" id="lat" step="any" min="-90" max="90" placeholder="Latitude" aria-label="Latitude, degrees, north positive">
+          <input type="number" id="lon" step="any" min="-180" max="180" placeholder="Longitude" aria-label="Longitude, degrees, east positive">
+        </div>
+        <span class="hint">Decimal degrees, north and east positive. Distances are along the Earth's surface (great circle).</span></div>
+      <div class="field"><label for="sort">Sort by</label>
+        <select id="sort">
+          <option value="name">Name</option>
+          <option value="first">First launch, oldest first</option>
+          <option value="distance">Distance from the point above</option>
+        </select></div>
+      <div class="actions"><button class="primary" type="submit">Show sites</button>
+        <button type="button" id="reset">Clear filters</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <div>
+      <section class="panel" aria-live="polite">
+        <h2>Sites</h2>
+        <div class="results" id="summary"></div>
+        <div id="map" class="map lsd-gap" role="img" aria-label="Map of the launch sites shown in the list"></div>
+        <p class="small muted lsd-legend" id="legend"></p>
+        <div class="scroll" id="siteWrap"><div id="sites"></div></div>
+        <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+      </section>
+      <section class="panel" id="detail" hidden aria-live="polite">
+        <h2 id="detailName"></h2>
+        <p class="muted small" id="detailWhere"></p>
+        <div class="results" id="detailFacts"></div>
+        <h3>Launch pads</h3>
+        <ul id="detailPads"></ul>
+        <p id="detailText"></p>
+        <p class="small" id="detailCheck"></p>
+        <p class="small" id="detailLinks"></p>
+        <div class="actions">
+          <button type="button" id="weatherBtn">Current weather here (Open-Meteo)</button>
+          <button type="button" id="compareBtn">Add to comparison</button>
+        </div>
+        <p class="msg" id="weatherMsg" hidden></p>
+        <div class="results lsd-gap" id="weather"></div>
+        <p class="small muted" id="weatherNote"></p>
+      </section>
+      <section class="panel" id="compare" hidden>
+        <h2>Comparison</h2>
+        <p class="small muted">Up to four sites side by side, with the great-circle distance between each pair.</p>
+        <div class="scroll"><div id="compareTable"></div></div>
+        <h3>Distances between them (km)</h3>
+        <div id="compareDist"></div>
+        <div class="actions"><button type="button" id="compareClear">Clear comparison</button></div>
+      </section>
+      <section class="panel">
+        <h2>Upcoming launches at these sites</h2>
+        <p class="small muted">Asks Launch Library 2 (The Space Devs) for the next 100 scheduled launches and places each at
+          the listed site nearest its pad, within 50 km. Nothing is fetched until you press the button.</p>
+        <div class="actions"><button type="button" id="ll2Btn">Load upcoming launches (Launch Library 2)</button></div>
+        <p class="msg" id="ll2Msg" hidden></p>
+        <div class="scroll" id="ll2Wrap"><div id="ll2"></div></div>
+        <div class="actions"><button type="button" id="ll2All" hidden>Show all</button></div>
+      </section>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>The list.</strong> 49 sites, each with one position: a main launch pad where the site has one (the
+      "Position marks" line says which), otherwise the facility's centre. Every position was checked to about
+      0.05° (about 5 km). Seven were moved because they were wrong: Cape Canaveral and Wallops to their pads, and
+      Plesetsk (0.38° of longitude out), Vostochny, Taiyuan (the old position was Taiyuan city, about 140 km from the
+      launch centre in Kelan County), Shahroud (the old position was the town) and Whalers Way (the old position was in
+      the sea). Ten positions could not be confirmed to that accuracy and say so on the site: Yasny, Kapustin Yar,
+      SaxaVord, Sutherland, Arnhem, Whalers Way, Woomera, Chabahar, Shahroud and Hammaguir (Andøya's position is its
+      rocket range; the orbital pad nearby was not checked).
+      "Country" is where the site is (Baikonur is in Kazakhstan, Kourou in French Guiana, Hammaguir in Algeria, San
+      Marco off Kenya); "Operator" is who runs the site, not every company that launches from it. "First launch" is the
+      first rocket launch there unless a note says otherwise (for example, first orbital launch). Status, operators
+      and pads are as of mid-2025 and change: check a current source before relying on them.</p>
+    <p><strong>Distances</strong> use the haversine formula on a sphere of radius 6,371 km:</p>
+    <p class="formula">a = sin²(Δφ/2) + cos φ₁ cos φ₂ sin²(Δλ/2) &nbsp;&nbsp; d = 2R · atan2(√a, √(1 − a))</p>
+    <p>with φ the latitudes and λ the longitudes. A sphere is within about 0.5 % of the distances on the WGS 84
+      ellipsoid, which is plenty for comparing sites.</p>
+    <p><strong>Upcoming launches</strong> come from Launch Library 2 by The Space Devs (ll.thespacedevs.com, API
+      2.2.0). Its free tier allows about 15 requests an hour from one address, so the page asks once per button press.
+      Each launch is placed at the listed site nearest its pad, within 50 km; launches from elsewhere (at sea, or
+      sites not in this list) are counted separately. The weather figure is the launch's published chance of
+      favourable weather where Launch Library 2 lists one, not something this page works out.
+      <strong>Current weather</strong> comes from Open-Meteo (api.open-meteo.com), a model analysis at the site's
+      position, not a station report. Map tiles are from OpenStreetMap. Nothing else is fetched.</p>
+    <p class="small muted">Reference: Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points", movable-type.co.uk. Test: <code>tests/launch-sites.test.js</code> (Veness's Land's End to John o' Groats
+      example, 968.9 km; Kennedy LC-39A to Cape Canaveral SLC-40, 5.79 km; filters, sorting and a sanity check of the
+      list).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser. Map tiles come from OpenStreetMap; weather and launch lookups go to Open-Meteo and Launch Library 2 only when you press their buttons.</div></footer>
+</body>
+</html>

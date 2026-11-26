@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aerospace Unit Converter · Dead Drop Toolbox</title>
+<meta name="description" content="Converts length, speed, mass, force, pressure, angle and temperature with exact NIST factors, plus Mach number and flight level.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/unit-converter.js"></script>
+<script src="unit-converter.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Reference · Units</p>
+  <h1>Aerospace Unit Converter</h1>
+  <p class="lede">Converts a value into every unit of its kind (length, speed, mass, force and thrust, pressure, angle,
+    temperature) using the exact definitions of the units. It also turns a Mach number (speed as a multiple of the
+    local speed of sound) into a speed for a given air temperature, and a pressure altitude into a flight level.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h3>Convert</h3>
+      <div class="field"><label for="cat">Kind of quantity</label>
+        <select id="cat"></select></div>
+      <div class="row2">
+        <div class="field"><label for="value">Value</label>
+          <input type="number" id="value" step="any" value="1"></div>
+        <div class="field"><label for="from">Unit</label>
+          <select id="from"></select></div>
+      </div>
+      <h3>Mach number</h3>
+      <div class="row2">
+        <div class="field"><label for="mach">Mach number</label>
+          <input type="number" id="mach" min="0" step="any" value="1"></div>
+        <div class="field"><label for="tsrc">Air temperature from</label>
+          <select id="tsrc">
+            <option value="isa">Standard atmosphere at an altitude</option>
+            <option value="temp">A measured temperature</option>
+          </select></div>
+      </div>
+      <div class="field" id="isa-field"><label for="isaAlt">Altitude (m, geopotential)</label>
+        <input type="number" id="isaAlt" min="-610" max="47000" step="any" value="0">
+        <span class="hint">Standard temperature: 15 °C at sea level, falling 6.5 °C per km to −56.5 °C at 11 km, then
+          constant to 20 km.</span></div>
+      <div class="field" id="temp-field" hidden><label for="tempC">Air temperature (°C)</label>
+        <input type="number" id="tempC" step="any" value="15"></div>
+      <h3>Flight level</h3>
+      <div class="row2">
+        <div class="field"><label for="palt">Pressure altitude</label>
+          <input type="number" id="palt" step="any" value="35000"></div>
+        <div class="field"><label for="paltUnit">Unit</label>
+          <select id="paltUnit"><option value="ft">feet</option><option value="m">metres</option></select></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Convert</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <h3 id="conv-title">Conversion</h3>
+      <div id="conv"></div>
+      <h3>Mach number</h3>
+      <div class="results" id="machres"></div>
+      <h3>Flight level</h3>
+      <div class="results" id="flres"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Each unit is stored as its size in SI units, and a value is converted by multiplying by the size of the unit it
+      is in and dividing by the size of the unit wanted. The sizes are the definitions in NIST Special Publication 811,
+      appendix B, most of them exact: the foot is 0.3048 m, the statute mile 1,609.344 m, the nautical mile 1,852 m, the
+      pound 0.45359237 kg, the pound-force 0.45359237 kg × 9.80665 m/s², the standard atmosphere 101,325 Pa. The
+      millimetre and inch of mercury are NIST's conventional values, 133.3224 Pa and 3,386.389 Pa. The astronomical
+      unit is the IAU's 2012 definition, 149,597,870,700 m. Temperatures are converted through kelvin
+      (°C = K − 273.15, °F = 1.8 × °C + 32, °R = 1.8 × K). The mil shown is the NATO mil, 6,400 to a circle; other
+      armies have used 6,000 or 6,300.</p>
+    <p><em>Mach number.</em> The speed of sound depends on the air's temperature only:
+      <span class="mono">a = √(γ R T)</span>, with γ = 1.4 and R = 287.05287 J/(kg·K) for dry air, so 340.29 m/s
+      (1,225.06 km/h) at the standard sea-level 15 °C and 295.07 m/s in the −56.5 °C air from 11 to 20 km. The standard
+      temperatures are those of the U.S. Standard Atmosphere, 1976, the same as the ICAO standard atmosphere up to
+      32 km. Mach 1 is not one fixed speed, which is why the tool asks for the temperature.</p>
+    <p><em>Flight level</em> is pressure altitude in hundreds of feet: the height the standard atmosphere gives for the
+      pressure measured with the altimeter set to 1013.25 hPa (29.92 inHg). It matches the true height above sea level
+      only when the day's air matches the standard atmosphere, so it cannot be worked out from a geometric altitude.
+      Levels are rounded to the nearest whole level; in practice aircraft are assigned levels in steps of 10.</p>
+    <p class="small muted">References: NIST Special Publication 811 (2008), <em>Guide for the Use of the International
+      System of Units</em>, appendix B; IAU 2012 resolution B2; <em>U.S. Standard Atmosphere, 1976</em>.
+      Test: <code>tests/unit-converter.test.js</code> (1 km = 0.6213712 mi; 1 atm = 14.695949 psi; Mach 1 at sea level =
+      340.294 m/s).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

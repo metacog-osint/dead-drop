@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite Coverage Planner · Dead Drop Toolbox</title>
+<meta name="description" content="When a satellite can see a ground target above a chosen elevation angle over the coming days, how much of the time that is, and the longest gap.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="satellite-coverage-planner.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/satellite-visibility.js"></script>
+<script src="../lib/satellite-passes.js"></script>
+<script src="../lib/ground-track.js"></script>
+<script src="../lib/satellite-coverage.js"></script>
+<script src="satellite-coverage-planner.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Geography and mapping</p>
+  <h1>Satellite Coverage Planner</h1>
+  <p class="lede">Finds the <em>coverage windows</em> of one satellite over a ground target: the times when the
+    satellite stands at or above a chosen <em>minimum elevation angle</em> (how high above the target's horizon it
+    must be to be useful, for a sensor or a radio link). It adds up how much of the period is covered, the longest
+    gap, and the mean <em>revisit time</em> (start of one window to the start of the next), and maps the circle the
+    satellite's ground point must be inside.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set (TLE)</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2. Get a current one with the <a href="tle-analyzer.html">TLE Analyzer</a>.</span></div>
+      <div class="row3">
+        <div class="field"><label for="lat">Target latitude (°)</label><input type="number" id="lat" step="any" value="38.0"></div>
+        <div class="field"><label for="lon">Target longitude (°)</label><input type="number" id="lon" step="any" value="-77.0"></div>
+        <div class="field"><label for="height">Height (m)</label><input type="number" id="height" step="any" value="0"></div>
+      </div>
+      <p class="small muted">North and east positive.</p>
+      <div class="row2">
+        <div class="field"><label for="minEl">Minimum elevation (°)</label>
+          <input type="number" id="minEl" min="0" max="80" step="any" value="10">
+          <span class="hint">0 is the horizon; 10 to 30 is usual for links and imaging.</span></div>
+        <div class="field"><label for="days">Period</label>
+          <select id="days"><option value="1">1 day</option><option value="3" selected>3 days</option>
+            <option value="7">7 days</option></select></div>
+      </div>
+      <div class="field"><label for="start">Start (UTC)</label><input type="datetime-local" id="start" step="1"></div>
+      <div class="actions"><button class="primary" type="submit">Find windows</button>
+        <button type="button" id="now">Start now</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="summary"></div>
+      <div id="map" class="map scp-gap" role="region" aria-label="Map of the target, its coverage circle and the ground track during windows"></div>
+      <p class="small muted">The shaded circle is where the satellite's ground point must be for the target to see it at
+        the minimum elevation, at the satellite's height at the start. The coloured lines are the ground track during
+        the first windows.</p>
+      <h3>Coverage windows</h3>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+      <p class="small muted">Times in your chosen zone (the Time button).</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves the element set through the period, and each moment's
+      position is turned into elevation as seen from the target on the WGS 84 ellipsoid, as in the Satellite Pass
+      Predictor. The search steps every 30 seconds; where the elevation crosses the minimum between two steps it is
+      narrowed to a tenth of a second, and the highest point of each window is refined. A window is one such stretch
+      at or above the minimum elevation. Covered time is the sum of the windows; the longest gap counts the time before
+      the first window and after the last.</p>
+    <p>The circle on the map uses a spherical Earth (radius 6,371 km). For a satellite at altitude h seen at
+      minimum elevation ε, the angle at the satellite off straight down (η) and the angle at the Earth's centre from
+      the target to the circle's edge (λ) are</p>
+    <p class="formula">sin η = (R / (R + h)) cos ε &nbsp;&nbsp; λ = 90° − ε − η</p>
+    <p>and the circle's radius along the surface is R λ (λ in radians). Its points come from the destination-point
+      formula on the sphere. A circle that holds a pole is closed along the pole.</p>
+    <p><strong>Limits.</strong> SGP4 positions drift from the truth as time moves from the element set's epoch,
+      typically one to a few kilometres a day for low orbits (a rough guide); a low satellite covers about 7.5 km a
+      second, so window times a week out can shift by tens of seconds or more. The circle is drawn for the height at
+      the start; for an orbit that is not circular its size changes around the orbit, while the windows themselves use
+      the true height at each moment. The sphere and the ellipsoid differ slightly, so a track can graze the circle's
+      edge a few kilometres from where a window opens. Terrain, buildings, the sensor's own field of view, daylight
+      and weather are not modelled. Map tiles come from OpenStreetMap (tile.openstreetmap.org); no other network
+      service is used.</p>
+    <p class="small muted">References: Wertz and Larson, <em>Space Mission Analysis and Design</em>, 3rd ed.,
+      sections 5.2 (coverage geometry) and 7.2 (coverage figures of merit); Vallado, <em>Fundamentals of
+      Astrodynamics and Applications</em>, 4th ed., section 4.4 (look angles); Chris Veness, "Calculate distance,
+      bearing and more between latitude/longitude points", movable-type.co.uk (destination point). Test:
+      <code>tests/satellite-coverage.test.js</code> (500 km at 10°: circle radius 1,563.0 km; geostationary at 10°:
+      71.44° of arc; a 500 km equatorial orbit over an equatorial target: windows of 473.80 s every 6,067.27 s).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RF Satellite Tracking Tool · Dead Drop Toolbox</title>
+<meta name="description" content="Pointing angles and Doppler shift for a satellite radio link: the frequency heard on the ground, the uplink frequency to transmit, and the Doppler through the next pass.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/satellite-visibility.js"></script>
+<script src="../lib/satellite-passes.js"></script>
+<script src="../lib/rf-doppler.js"></script>
+<script src="rf-satellite-tracking-tool.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · RF and comms</p>
+  <h1>RF Satellite Tracking Tool</h1>
+  <p class="lede">Where to point an antenna at a satellite, and how far its radio frequency moves because of the
+    <em>Doppler effect</em>: while the satellite comes towards you its signal arrives higher than it was sent, and
+    while it moves away, lower. The tool gives the frequency to listen on, the frequency to transmit on so the
+    satellite hears its own channel, and the Doppler through the pass.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set (TLE)</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2. Get a current one with the <a href="tle-analyzer.html">TLE Analyzer</a>.</span></div>
+      <div class="field"><label for="preset">Frequency preset</label>
+        <select id="preset"><option value="">Enter below</option></select>
+        <span class="hint">Published channels; check the operator or AMSAT for whether a satellite is active.</span></div>
+      <div class="row2">
+        <div class="field"><label for="down">Downlink (MHz)</label><input type="number" id="down" step="any" value="145.800">
+          <span class="hint">What the satellite transmits.</span></div>
+        <div class="field"><label for="up">Uplink (MHz)</label><input type="number" id="up" step="any" placeholder="none">
+          <span class="hint">What it listens on; optional.</span></div>
+      </div>
+      <div class="field"><label for="site">Place</label>
+        <select id="site"><option value="">Enter below</option></select></div>
+      <div class="row3">
+        <div class="field"><label for="lat">Latitude (°)</label><input type="number" id="lat" step="any" value="38.0"></div>
+        <div class="field"><label for="lon">Longitude (°)</label><input type="number" id="lon" step="any" value="-97.0"></div>
+        <div class="field"><label for="height">Height (m)</label><input type="number" id="height" step="any" value="0"></div>
+      </div>
+      <p class="small muted">North and east positive.</p>
+      <div class="field"><label for="when">Time (UTC)</label><input type="datetime-local" id="when" step="1"></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="now">Now</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="results"></div>
+      <h3>Passes in the 24 hours from that time</h3>
+      <div id="passes"></div>
+      <h3 id="curveTitle">Doppler through the pass</h3>
+      <div class="scroll" id="curveWrap"><div id="curve"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) gives the satellite's position and velocity in the
+      non-rotating TEME frame. Both are turned into the Earth-fixed frame, where your antenna is at rest; the velocity
+      loses the Earth's rotation, <span class="mono">v<sub>fixed</sub> = R(θ) v<sub>TEME</sub> − ω × r</span>. The
+      <em>range rate</em> is how fast the distance from you to the satellite is changing, the satellite's velocity
+      along the line of sight. The first-order Doppler formula then gives</p>
+    <p class="formula">f<sub>heard</sub> = f<sub>sent</sub> (1 − ṙ / c) &nbsp;&nbsp; shift = −f ṙ / c &nbsp;&nbsp; f<sub>transmit, uplink</sub> = f<sub>channel</sub> / (1 − ṙ / c)</p>
+    <p>with ṙ negative while the satellite approaches. At 145.8 MHz a satellite about 400 km up shifts by up to roughly
+      ±3.3 kHz near the horizon; the shift changes fastest when the satellite is highest. The relativistic term, about (v/c)² = 6 × 10<sup>−10</sup>
+      of the frequency, is left out (under 0.1 Hz at 145 MHz). The satellite's own oscillator error is not known
+      and is not included.</p>
+    <p>Pass times use the same search as the Satellite Pass Predictor (30-second steps, crossings refined to half a
+      second); the Doppler table samples the current pass, or the next one, every 30 seconds.</p>
+    <p>The frequency presets are published channels for amateur, weather and navigation satellites (GLONASS L1 is
+      given at its centre, channel 0; each satellite is offset by its channel number × 0.5625 MHz). Satellites fail
+      and change modes, so check a current source before relying on one.</p>
+    <p class="small muted">References: Montenbruck and Gill, <em>Satellite Orbits</em>, section 6.2.3 (range-rate
+      measurements); Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., sections 3.7 (Earth-fixed
+      velocity) and 4.4 (range rate). Test: <code>tests/rf-doppler.test.js</code> (145.8 MHz approaching at 1 km/s:
+      +486.336 Hz; a satellite moving square to its own radius still has a range rate of 5.0513 km/s seen from the
+      ground).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

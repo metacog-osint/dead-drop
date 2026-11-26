@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Time-Zone Converter · Dead Drop Toolbox</title>
+<meta name="description" content="One local time, in a named time zone, shown at launch sites, control centres and the common time zones, with daylight saving time and clock changes handled.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/timezone.js"></script>
+<script src="timezone-converter.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Time</p>
+  <h1>Multi-Time-Zone Converter</h1>
+  <p class="lede">Type a date and time as a clock in one place reads it, name that place's time zone, and see the
+    same moment at launch sites, control centres and the common time zones. Daylight saving time (summer time, when
+    clocks move an hour ahead) is applied by each zone's own rules, and a time that a clock change skips or repeats
+    is flagged.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="when">Date and time, as read in the zone below</label>
+        <input type="datetime-local" id="when" step="1">
+        <span class="hint">Year-month-day and 24-hour clock. This is not your computer's zone unless you pick it.</span></div>
+      <div class="field"><label for="zone">Time zone of that time</label>
+        <select id="zone"></select>
+        <span class="hint">Zones are IANA time zone names, such as America/Chicago, which carry the zone's history of clock changes.</span></div>
+      <div class="field" id="otherRow" hidden><label for="other">IANA zone name</label>
+        <input type="text" id="other" placeholder="e.g. Asia/Manila" spellcheck="false" autocomplete="off"></div>
+      <div class="actions"><button class="primary" type="submit">Convert</button>
+        <button type="button" id="now">Now</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <p class="msg" id="note" hidden></p>
+      <h3>Launch sites and control centres</h3>
+      <div class="scroll" id="sites"></div>
+      <div class="actions"><button type="button" id="sitesAll" hidden>Show all</button></div>
+      <h3>Common time zones</h3>
+      <div class="scroll" id="zones"></div>
+      <div class="actions"><button type="button" id="zonesAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Each zone's rules come from the IANA time zone database (the "tz" or "Olson" database), which your browser
+      carries and reads through its <span class="mono">Intl.DateTimeFormat</span> interface. The page turns the time
+      you type into one instant in Coordinated Universal Time (UTC) by finding the zone's offset from UTC in force at
+      that moment, then reads that instant on each zone's clock.</p>
+    <p>Twice a year, in zones with daylight saving time, a local time can be missing or doubled. When clocks go
+      forward (America/Chicago at 02:00 on 8 March 2026) the hour from 02:00 to 02:59 never happens; the page moves
+      such a time forward by the length of the gap, so 02:30 reads as 03:30 CDT (08:30 UTC). When clocks go back
+      (01:00 to 01:59 on 1 November 2026) the hour happens twice; the page uses the first one, 01:30 CDT (06:30 UTC),
+      and gives the second, 01:30 CST (07:30 UTC). This is the "compatible" rule of RFC 9557 and the TC39 Temporal
+      proposal. The zone abbreviations (CDT, GMT+5) are the browser's; where a zone has no common abbreviation the
+      browser writes its offset instead.</p>
+    <p>Limits: the answers are only as current as the browser's copy of the tz database, so a clock-rule change
+      announced recently may be missing. Baikonur is shown on Asia/Qyzylorda, the IANA zone for the Kyzylorda region;
+      Kazakhstan moved the whole country to UTC+5 on 1 March 2024, and the leased city's own practice is not checked
+      here. Times before 1970 rest on the database's historical records, which are less certain.</p>
+    <p class="small muted">Reference: IANA tz database (tz-link, "Theory and pragmatics of the tz code and data");
+      ECMA-402 for <span class="mono">Intl</span>; RFC 9557 for the treatment of skipped and repeated times.
+      Test: <code>tests/timezone.test.js</code> (America/Chicago on 8 March and 1 November 2026, London, Sydney,
+      Kolkata, the date line).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

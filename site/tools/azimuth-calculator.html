@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Azimuth Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="The heading a rocket flies at liftoff to reach an orbit of a given inclination, with the correction for the Earth's rotation.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/launch-azimuth.js"></script>
+<script src="azimuth-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Launch</p>
+  <h1>Launch Azimuth Calculator</h1>
+  <p class="lede">The compass heading a rocket flies at liftoff (its <em>launch azimuth</em>, measured clockwise from
+    true north) to put a payload into an orbit of a chosen <em>inclination</em>, the tilt of the orbit against the
+    equator. Every reachable inclination has two headings, one going north-east (or north-west) and one going
+    south-east (or south-west). The tool gives both, first for a non-rotating Earth and then corrected for the
+    Earth's spin, and draws them from the launch site.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="site">Launch site</label>
+        <select id="site">
+          <option value="">Enter a position below</option>
+          <option value="28.562,-80.577">Cape Canaveral SFS, Florida (SLC-40)</option>
+          <option value="28.608,-80.604">Kennedy Space Center, Florida (LC-39A)</option>
+          <option value="34.632,-120.611">Vandenberg SFB, California (SLC-4E)</option>
+          <option value="37.833,-75.488">Wallops Island, Virginia</option>
+          <option value="9.048,167.743">Reagan Test Site, Kwajalein Atoll (Omelek)</option>
+          <option value="-39.262,177.865">Mahia, New Zealand (Rocket Lab LC-1)</option>
+          <option value="5.239,-52.768">Guiana Space Centre, Kourou</option>
+          <option value="45.920,63.342">Baikonur, Kazakhstan</option>
+          <option value="62.927,40.577">Plesetsk, Russia</option>
+          <option value="51.884,128.334">Vostochny, Russia</option>
+          <option value="40.958,100.291">Jiuquan, China</option>
+          <option value="38.849,111.608">Taiyuan, China</option>
+          <option value="28.246,102.027">Xichang, China</option>
+          <option value="19.614,110.951">Wenchang, China</option>
+          <option value="30.400,130.970">Tanegashima, Japan</option>
+          <option value="31.252,131.079">Uchinoura, Japan</option>
+          <option value="34.432,127.535">Naro, South Korea</option>
+          <option value="13.720,80.230">Satish Dhawan, Sriharikota, India</option>
+          <option value="35.234,53.921">Imam Khomeini Spaceport, Semnan, Iran</option>
+        </select>
+        <span class="hint">Positions are rounded to about a kilometre; pick one or type your own.</span></div>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" min="-90" max="90" step="any" value="28.562">
+          <span class="hint">North positive.</span></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" min="-180" max="180" step="any" value="-80.577">
+          <span class="hint">East positive. Used for the map only.</span></div>
+      </div>
+      <div class="field"><label for="inc">Target inclination (°)</label>
+        <input type="number" id="inc" min="0" max="180" step="any" value="51.6">
+        <span class="hint">0 is equatorial, 90 passes over the poles, above 90 is retrograde (moving westward). The
+          ISS is at 51.6; sun-synchronous orbits are near 97 to 99.</span></div>
+      <div class="field"><label for="alt">Orbit altitude (km)</label>
+        <input type="number" id="alt" min="80" step="any" value="400">
+        <span class="hint">Altitude of the circular orbit reached. It sets the orbital speed used in the
+          rotating-Earth correction.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>Initial headings from the site</h3>
+      <div id="map" class="map" role="img" aria-label="Map of the launch site with the two launch headings"></div>
+      <p class="small muted">Each line follows the corrected launch azimuth along a great circle for 2,000 km. It shows the
+        direction of flight at liftoff, not the ground track, which curves as the Earth turns underneath.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Where an orbit crosses the launch site's latitude, the equator, the orbit and the site's meridian form a right
+      spherical triangle. Napier's rules give</p>
+    <p class="formula">cos i = cos(latitude) × sin(azimuth) &nbsp;&nbsp; so &nbsp;&nbsp; sin(azimuth) = cos i / cos(latitude)</p>
+    <p>The north-going launch flies that azimuth; the south-going launch flies 180° minus it. Both reach the same
+      inclination. This is the <em>inertial</em> azimuth, the heading in a frame that does not turn with the Earth.</p>
+    <p>On the pad the rocket already moves east with the ground, at ω N cos(latitude): ω is the Earth's rotation rate,
+      7.292115 × 10⁻⁵ rad/s, and N cos(latitude) the site's distance from the Earth's axis on the WGS 84 ellipsoid
+      (465 m/s at the equator, 409 m/s at Cape Canaveral). The vehicle has to supply only the difference between the
+      orbital velocity and that ground velocity, so the heading it flies relative to the ground is</p>
+    <p class="formula">v<sub>N</sub> = v cos Az, &nbsp; v<sub>E</sub> = v sin Az − ω N cos(latitude), &nbsp;
+      azimuth relative to the ground = atan2(v<sub>E</sub>, v<sub>N</sub>)</p>
+    <p>where v = √(μ / r) is the circular orbital speed at the chosen altitude (μ = 398,600.4418 km³/s²). The
+      <em>rotation gain</em> is the part of the ground's speed that lies along the orbit, ω N cos(latitude) × sin Az; it
+      is negative for a retrograde orbit, which has to cancel the Earth's spin.</p>
+    <p><strong>Limits.</strong> A direct launch can only reach inclinations from the site's latitude up to 180° minus
+      the latitude; anything else needs a plane change after launch (a <em>dogleg</em> turn during ascent or a burn in
+      orbit), which costs fuel and is not modelled here. The correction uses the site's speed at liftoff and the orbital
+      speed at insertion, and ignores the minutes of flight between them, gravity, drag and steering, so real flight
+      azimuths differ by a degree or so. Many headings are also ruled out by range safety (no overflight of populated
+      land), which this tool does not know about. Site positions are rounded and come from public sources.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      launch-site geometry (cos i = cos φ sin β); Curtis, <em>Orbital Mechanics for Engineering Students</em>, for the
+      velocity triangle; WGS 84 constants (NGA TR8350.2); map lines from the destination-point formula in Chris Veness,
+      "Calculate distance, bearing and more between latitude/longitude points" (movable-type.co.uk).
+      Map tiles © OpenStreetMap contributors. Test: <code>tests/launch-azimuth.test.js</code> (Cape Canaveral, 28.5°, to
+      51.6° at 400 km gives 44.98° inertial and 42.73° relative to the ground).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. The sums run in your browser; only the map tiles are fetched, from OpenStreetMap.</div></footer>
+</body>
+</html>

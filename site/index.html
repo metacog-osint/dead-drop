@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dead Drop Toolbox · The Intelligence Company</title>
+<meta name="description" content="Standalone analyst tools for open-source work on space, radio, geography and time. Each runs in your browser.">
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="toolbox.css">
+<link rel="stylesheet" href="tic-time.css">
+<link rel="stylesheet" href="tic-nav.css">
+<script src="tic-time.js"></script>
+<script src="tic-nav.js" defer></script>
+<script src="toolbox.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><strong>Dead Drop</strong><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <h1>Dead Drop Toolbox</h1>
+  <p class="lede">38 standalone tools for open-source analysis of space, radio, geography and time. Each one
+    runs in your browser and says how it works it out, with the reference it follows; nothing you type is sent
+    anywhere unless a tool says it looks up public data and names the service.</p>
+  <h2 class="cat">Orbits and space</h2>
+  <div class="cards">
+    <a class="card" href="tools/delta-v-mission-planner.html"><strong>Delta-V Mission Planner</strong><span>The velocity change and propellant to move between two circular orbits, with an inclination change done the cheapest way.</span></a>
+    <a class="card" href="tools/eclipse-prediction-calculator.html"><strong>Eclipse Prediction Calculator</strong><span>How long a satellite in a circular orbit spends in the Earth&#x27;s shadow each orbit, from its altitude and beta angle.</span></a>
+    <a class="card" href="tools/ground-track.html"><strong>Ground Track Plotter</strong><span>Draws the path on the ground beneath a satellite from its element set, split cleanly where it crosses the 180° meridian.</span></a>
+    <a class="card" href="tools/azimuth-calculator.html"><strong>Launch Azimuth Calculator</strong><span>The heading a rocket flies at liftoff to reach an orbit of a given inclination, with the correction for the Earth&#x27;s rotation.</span></a>
+    <a class="card" href="tools/launch-vehicle-performance-calculator.html"><strong>Launch Vehicle Performance Calculator</strong><span>A first estimate of a rocket&#x27;s payload to a chosen orbit, scaled from its published payload to low Earth orbit, with the velocity changes worked out.</span></a>
+    <a class="card" href="tools/launch-window-calculator.html"><strong>Launch Window Calculator</strong><span>The times a launch site passes under a target orbit&#x27;s plane, when a direct launch into that plane is possible.</span></a>
+    <a class="card" href="tools/multi-satellite-tracker.html"><strong>Multi-Satellite Tracker</strong><span>Shows where several satellites are now on a map, with the ground track each has just flown and is about to fly, updated every few seconds.</span></a>
+    <a class="card" href="tools/orbital-decay-estimator.html"><strong>Orbital Decay Estimator</strong><span>A rough estimate of how long atmospheric drag takes to bring a satellite down, with the spread solar activity puts on it.</span></a>
+    <a class="card" href="tools/rf-satellite-tracking-tool.html"><strong>RF Satellite Tracking Tool</strong><span>Pointing angles and Doppler shift for a satellite radio link: the frequency heard on the ground, the uplink frequency to transmit, and the Doppler through the next pass.</span></a>
+    <a class="card" href="tools/satellite-conjunction-analysis.html"><strong>Satellite Conjunction Analysis</strong><span>Screens two satellites&#x27; element sets for close approaches in a time window: when they pass closest, how close, and how fast.</span></a>
+    <a class="card" href="tools/satellite-coverage-planner.html"><strong>Satellite Coverage Planner</strong><span>When a satellite can see a ground target above a chosen elevation angle over the coming days, how much of the time that is, and the longest gap.</span></a>
+    <a class="card" href="tools/satellite-footprint-calculator.html"><strong>Satellite Footprint Calculator</strong><span>The patch of ground a satellite can serve at or above a minimum elevation angle: its radius, area and edge range.</span></a>
+    <a class="card" href="tools/satellite-pass-predictor.html"><strong>Satellite Pass Predictor</strong><span>When a satellite next rises over a place, how high it gets, when it sets, and which passes could be seen with the eye.</span></a>
+    <a class="card" href="tools/satellite-visibility-calculator.html"><strong>Satellite Visibility Calculator</strong><span>Where a satellite is in your sky at a given time, whether sunlight is on it, whether your sky is dark, and so whether you could see it with the eye.</span></a>
+    <a class="card" href="tools/slant-range-calculator.html"><strong>Slant Range Calculator</strong><span>Straight-line distance from an observer to a satellite, from its altitude and elevation angle, with the signal delay.</span></a>
+    <a class="card" href="tools/tle-analyzer.html"><strong>TLE Analyzer</strong><span>Reads a satellite&#x27;s two-line element set field by field, checks it, and works out the orbit&#x27;s period, size and height. Can look up current element sets from CelesTrak.</span></a>
+  </div>
+  <h2 class="cat">Launch</h2>
+  <div class="cards">
+    <a class="card" href="tools/flight-path-analyzer.html"><strong>Flight Path Analyzer</strong><span>Ground track and end point of a flight from a launch point, azimuth and range, with the minimum-energy ballistic apogee, speed and flight time.</span></a>
+    <a class="card" href="tools/launch-site-database.html"><strong>Launch Site Database</strong><span>A checked reference list of 49 orbital, suborbital and test launch sites worldwide, with a map, filters, distances and upcoming launches.</span></a>
+    <a class="card" href="tools/launch-weather-dashboard.html"><strong>Launch Weather Dashboard</strong><span>Screens upcoming launches against forecast weather at the pad and current space weather, with indicative limits. A screening aid, not a launch decision.</span></a>
+  </div>
+  <h2 class="cat">RF and comms</h2>
+  <div class="cards">
+    <a class="card" href="tools/doppler-shift-calculator.html"><strong>Doppler Shift Calculator</strong><span>Frequency shift of a radio signal from a moving transmitter, and the largest shift a satellite in a circular orbit can show a ground station.</span></a>
+    <a class="card" href="tools/gnss-interference-analyzer.html"><strong>GNSS Interference Indicators</strong><span>A checklist of a satellite-navigation receiver&#x27;s readings that can point to jamming or spoofing, against open-sky norms or the receiver&#x27;s own normal.</span></a>
+    <a class="card" href="tools/ground-station-frequency-map.html"><strong>Ground Station Frequency Map</strong><span>A reference map of well-known satellite ground stations and the frequency bands their operators say they use, with a band look-up for any frequency.</span></a>
+    <a class="card" href="tools/link-budget-calculator.html"><strong>Link Budget Calculator</strong><span>Received power and link margin for a radio link over a clear line-of-sight path, with free-space loss per ITU-R P.525.</span></a>
+    <a class="card" href="tools/rf-source-triangulation-tool.html"><strong>RF Source Triangulation</strong><span>Estimate where a radio transmitter is from bearings or arrival-time differences at several receivers, with an error ellipse.</span></a>
+  </div>
+  <h2 class="cat">Geography and maps</h2>
+  <div class="cards">
+    <a class="card" href="tools/bearing-distance-overlay.html"><strong>Bearing and Distance Overlay</strong><span>Draw range rings and bearing lines on a map as true great-circle shapes, with each line&#x27;s end point and arrival bearing.</span></a>
+    <a class="card" href="tools/csv-map-plotter.html"><strong>CSV to Map Plotter</strong><span>Plot many points on a map from CSV rows, with the great-circle distance and bearing of each leg in row order.</span></a>
+    <a class="card" href="tools/coordinate-converter.html"><strong>Coordinate Converter</strong><span>Convert latitude and longitude between decimal degrees, degrees-minutes-seconds and degrees-decimal-minutes, and to UTM and MGRS grid references.</span></a>
+    <a class="card" href="tools/distance-bearing-calculator.html"><strong>Distance and Bearing Calculator</strong><span>Great-circle distance, initial and final bearing, and midpoint between two latitude and longitude points.</span></a>
+    <a class="card" href="tools/kml-kmz-visualizer.html"><strong>KML/KMZ Visualizer</strong><span>Open a Google Earth KML or KMZ file on a map in your browser, with each line&#x27;s length and each polygon&#x27;s area, and copy it as GeoJSON.</span></a>
+    <a class="card" href="tools/light-pollution-map.html"><strong>Light Pollution Map</strong><span>Scout dark observing sites on a map with NASA&#x27;s satellite image of night lights, keep a list of sites, and convert sky-brightness readings.</span></a>
+    <a class="card" href="tools/map-screenshot.html"><strong>Map Screenshot</strong><span>Save a map view as a PNG or JPEG image with a title, notes, labelled markers, a scale bar and the map credit.</span></a>
+    <a class="card" href="tools/viewshed-calculator.html"><strong>Viewshed Calculator</strong><span>Whether an observer can see each of a set of targets over the terrain between them, allowing for the Earth&#x27;s curvature and refraction.</span></a>
+  </div>
+  <h2 class="cat">Images and files</h2>
+  <div class="cards">
+    <a class="card" href="tools/image-metadata-extractor.html"><strong>Image Metadata Extractor</strong><span>Read the EXIF metadata in a JPEG photo in your browser: GPS position, dates, camera and exposure settings. The image is never uploaded.</span></a>
+    <a class="card" href="tools/reverse-image-geocoder.html"><strong>Reverse Image Geocoder</strong><span>Put a photo on the map from the GPS position in its EXIF metadata, read in your browser. The photo is never uploaded.</span></a>
+  </div>
+  <h2 class="cat">Time</h2>
+  <div class="cards">
+    <a class="card" href="tools/timezone-converter.html"><strong>Multi-Time-Zone Converter</strong><span>One local time, in a named time zone, shown at launch sites, control centres and the common time zones, with daylight saving time and clock changes handled.</span></a>
+    <a class="card" href="tools/sun-position-calculator.html"><strong>Sun Position Calculator</strong><span>Where the Sun stands in the sky from any place at any moment, with sunrise, solar noon, sunset and twilight times, worked out in your browser.</span></a>
+    <a class="card" href="tools/timezone-batch-converter.html"><strong>Time Zone Batch Converter</strong><span>Paste many timestamps, one per line, in ISO 8601, Unix time, date-time groups or common written forms, and read each one in UTC and the time zones you choose.</span></a>
+  </div>
+  <h2 class="cat">Reference</h2>
+  <div class="cards">
+    <a class="card" href="tools/unit-converter.html"><strong>Aerospace Unit Converter</strong><span>Converts length, speed, mass, force, pressure, angle and temperature with exact NIST factors, plus Mach number and flight level.</span></a>
+  </div>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox, The Intelligence Company. Code under the GNU AGPL v3.0.
+  Publicly available information only.</div></footer>
+</body>
+</html>

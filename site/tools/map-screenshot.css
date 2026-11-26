@@ -1,0 +1,4 @@
+/* Map Screenshot: spacing under headings, a taller map, and the marker label. */
+.ms-gap { margin-top: 14px; }
+.ms-map { height: 520px; }
+.ms-label { font-weight: 600; }

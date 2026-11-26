@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbital Decay Estimator · Dead Drop Toolbox</title>
+<meta name="description" content="A rough estimate of how long atmospheric drag takes to bring a satellite down, with the spread solar activity puts on it.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/orbital-decay.js"></script>
+<script src="orbital-decay-estimator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Orbital Decay Estimator</h1>
+  <p class="lede">A rough estimate of how long the thin upper atmosphere takes to drag a satellite down until it
+    re-enters, from its orbit and how heavy it is for its size. Treat the answer as a range, not a date: the
+    density of the upper air, which sets the answer, rises and falls several times over with the Sun's activity.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="row2">
+        <div class="field"><label for="perigee">Perigee altitude (km)</label>
+          <input type="number" id="perigee" step="any" value="400">
+          <span class="hint">The orbit's lowest point above the surface.</span></div>
+        <div class="field"><label for="apogee">Apogee altitude (km)</label>
+          <input type="number" id="apogee" step="any" value="420">
+          <span class="hint">Its highest point. Equal to perigee for a circular orbit.</span></div>
+      </div>
+      <div class="field"><label for="inclination">Inclination (degrees)</label>
+        <input type="number" id="inclination" min="0" max="180" step="any" value="51.6">
+        <span class="hint">The orbit's tilt against the equator. It changes how fast the satellite meets the air, which turns with the Earth.</span></div>
+      <div class="field"><label for="preset">Object</label>
+        <select id="preset">
+          <option value="">Enter mass and area below</option>
+          <option value="cubesat">3U CubeSat (about 4 kg, 0.03 m²)</option>
+          <option value="smallsat">Small satellite (about 100 kg, 1 m²)</option>
+          <option value="station">Large station, roughly the ISS (about 420,000 kg, 1,700 m²)</option>
+        </select>
+        <span class="hint">Rough typical values to start from; a real object's facing area changes with its attitude and solar panels.</span></div>
+      <div class="row3">
+        <div class="field"><label for="mass">Mass (kg)</label>
+          <input type="number" id="mass" step="any" value="100"></div>
+        <div class="field"><label for="area">Area (m²)</label>
+          <input type="number" id="area" step="any" value="1"></div>
+        <div class="field"><label for="cd">Drag coefficient</label>
+          <input type="number" id="cd" step="any" value="2.2"></div>
+      </div>
+      <p class="hint small muted">Area is the average cross-section facing the direction of travel. A drag coefficient of 2.0 to 2.5 suits most satellites; 2.2 is the usual default. If you know the ballistic coefficient B = m/(C<sub>d</sub>A) in kg/m², enter it as the mass with area and drag coefficient both 1.</p>
+      <div class="field"><label for="start">Start date and time (UTC)</label>
+        <input type="datetime-local" id="start" step="60">
+        <span class="hint">When the orbit above held; the re-entry dates count from here.</span></div>
+      <div class="actions"><button class="primary" type="submit">Estimate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>How the orbit comes down (table density)</h3>
+      <div class="scroll" id="profile"></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Air density.</strong> The density comes from the exponential atmosphere table in Vallado's
+      <em>Fundamentals of Astrodynamics and Applications</em> (4th ed., chapter 8, Table 8-4), built from the
+      COSPAR International Reference Atmosphere 1972 (CIRA-72) for average solar activity: in each altitude band,
+      <span class="mono">ρ = ρ<sub>0</sub> · e<sup>−(h − h<sub>0</sub>)/H</sup></span>, with H the band's
+      <em>scale height</em> (the climb over which the density falls by a factor of e, about 2.7).</p>
+    <p><strong>Decay.</strong> Drag is a force against the direction of travel,
+      <span class="mono">½ ρ v² / B</span> per unit mass, where B = m/(C<sub>d</sub>A) is the <em>ballistic
+      coefficient</em>: heavy, compact objects have a high B and come down slowly. Its effect on the orbit's size
+      (semi-major axis) and shape (eccentricity) follows from Gauss's equations for a slowly changing orbit, averaged
+      over each orbit and stepped forward in time. For a circular orbit they reduce to
+      <span class="mono">da/dt = −ρ F √(μa) / B</span>. F is King-Hele's correction for the air turning with the
+      Earth, <span class="mono">(1 − r ω cos i / v)²</span>, about 0.9 for a prograde low orbit. An elliptical orbit
+      loses height mostly at apogee, so it grows rounder as it decays. The estimate ends when the whole orbit is below
+      120 km, after which re-entry takes hours or less.</p>
+    <p><strong>How far to trust it.</strong> This is a rough estimate. The table has no solar cycle in it: real
+      density at 300 to 600 km swings by roughly five to ten times between solar minimum and solar maximum, and jumps
+      further in geomagnetic storms, so a real lifetime can easily be half or double the central figure, and over a
+      long lifetime spanning a solar cycle the error can be larger still. That is why the results also show the
+      lifetime with the density doubled (towards solar maximum) and halved (towards solar minimum); those two are a
+      plain factor-of-two bracket, not a solar model. Other things left out: the Earth's flattening, the day-night
+      bulge in the atmosphere, attitude changes, and the pull of the Moon and Sun, which matters for orbits with a
+      high apogee. For a real re-entry prediction, use the official tracking centres' messages.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      chapter 8 (atmospheric drag, Table 8-4) and chapter 9 (Gauss's variation of parameters); King-Hele,
+      <em>Satellite Orbits in an Atmosphere: Theory and Applications</em> (1987). Test:
+      <code>tests/orbital-decay.test.js</code> (450 km circular with B = 100 kg/m² falls 71.44 m a day, reaches
+      400 km after 471.4 days and 350 km 194.3 days later, matching the closed form for each band).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

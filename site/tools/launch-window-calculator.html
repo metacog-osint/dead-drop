@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Window Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="The times a launch site passes under a target orbit's plane, when a direct launch into that plane is possible.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/launch-window.js"></script>
+<script src="launch-window-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Launch</p>
+  <h1>Launch Window Calculator</h1>
+  <p class="lede">An orbit's plane stays nearly fixed in space while the Earth turns beneath it, so a launch site
+    passes under the plane at set times. A rocket launched at one of those moments can fly straight into the plane
+    without spending fuel to turn. This tool lists those moments for a site and a target orbit: normally twice a day,
+    once heading north-east and once south-east (north-west and south-west for a retrograde orbit). The plane is set
+    either by its <em>right ascension of the ascending node</em> (RAAN, where it crosses the equator going north,
+    measured in the sky from the vernal equinox) or, for a sun-synchronous orbit, by the local time of that node.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="site">Launch site</label>
+        <select id="site">
+          <option value="">Enter a position below</option>
+          <option value="28.562,-80.577">Cape Canaveral SFS, Florida (SLC-40)</option>
+          <option value="28.608,-80.604">Kennedy Space Center, Florida (LC-39A)</option>
+          <option value="34.632,-120.611">Vandenberg SFB, California (SLC-4E)</option>
+          <option value="-39.262,177.865">Mahia, New Zealand (Rocket Lab LC-1)</option>
+          <option value="5.239,-52.768">Guiana Space Centre, Kourou</option>
+          <option value="45.920,63.342">Baikonur, Kazakhstan</option>
+          <option value="40.958,100.291">Jiuquan, China</option>
+          <option value="19.614,110.951">Wenchang, China</option>
+          <option value="13.720,80.230">Satish Dhawan, Sriharikota, India</option>
+        </select></div>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" min="-90" max="90" step="any" value="28.562">
+          <span class="hint">North positive.</span></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" min="-180" max="180" step="any" value="-80.577">
+          <span class="hint">East positive.</span></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="inc">Inclination (°)</label>
+          <input type="number" id="inc" min="0" max="180" step="any" value="51.64">
+          <span class="hint">Tilt of the orbit against the equator.</span></div>
+        <div class="field"><label for="alt">Altitude (km)</label>
+          <input type="number" id="alt" min="80" step="any" value="420">
+          <span class="hint">Sets the plane's drift.</span></div>
+      </div>
+      <div class="field"><label for="mode">Orbit plane given by</label>
+        <select id="mode">
+          <option value="raan">RAAN at an epoch</option>
+          <option value="ltan">Sun-synchronous: local time of the ascending node</option>
+        </select></div>
+      <div id="raan-fields">
+        <div class="row2">
+          <div class="field"><label for="raan">RAAN (°)</label>
+            <input type="number" id="raan" min="0" max="360" step="any" value="0">
+            <span class="hint">From a current element set, e.g. a CelesTrak two-line element set.</span></div>
+          <div class="field"><label for="epoch">RAAN epoch (UTC)</label>
+            <input type="datetime-local" id="epoch" step="1">
+            <span class="hint">The time the RAAN applies to.</span></div>
+        </div>
+        <label class="check"><input type="checkbox" id="j2" checked> Let the plane drift with the Earth's
+          oblateness (J2)</label>
+      </div>
+      <div id="ltan-fields" hidden>
+        <div class="field"><label for="ltan">Ascending node local time (hh:mm, mean solar time)</label>
+          <input type="text" id="ltan" value="22:30" inputmode="numeric" pattern="[0-2]?[0-9]:[0-5][0-9]">
+          <span class="hint">A "10:30 descending node" orbit has its ascending node at 22:30.</span></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="start">Search from (UTC)</label>
+          <input type="datetime-local" id="start" step="1"></div>
+        <div class="field"><label for="days">Days to search</label>
+          <input type="number" id="days" min="0.05" max="366" step="any" value="7"></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Find windows</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>Windows</h3>
+      <div class="scroll" id="table"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The site lies in the orbit's plane when its <em>local sidereal time</em> (LST, the right ascension crossing
+      its meridian: the Greenwich mean sidereal time plus the site's east longitude) equals</p>
+    <p class="formula">LST = RAAN + Δλ (north-going pass) &nbsp;&nbsp; or &nbsp;&nbsp; LST = RAAN + 180° − Δλ (south-going pass)
+      <br>sin Δλ = tan(latitude) / tan(inclination)</p>
+    <p>Δλ is the angle along the equator from the ascending node to the site's meridian, from the right spherical
+      triangle of the equator, the orbit and the meridian. Greenwich mean sidereal time comes from Meeus, equation
+      12.4: 280.46061837° + 360.98564736629° × (days since 2000 January 1, 12h UT), plus two tiny century terms. It
+      gains 360.9856° a day, so the sky returns to the same place every sidereal day, 23 h 56 min 4.09 s. Each pass
+      therefore comes about 4 minutes earlier each day, and the two passes of a day are (180° − 2Δλ) / 360.9856° of a
+      day apart. When the inclination equals the latitude, the two passes merge into one a day; below it, the site
+      never sees the plane. The launch azimuth shown is the inertial one, sin Az = cos(inclination) / cos(latitude);
+      the Launch Azimuth Calculator gives the heading corrected for the Earth's rotation.</p>
+    <p>The plane is not quite fixed: the Earth's equatorial bulge (the J2 term) turns it by
+      −1.5 n J2 (R/a)² cos i radians per second (n is the orbit's mean motion, R = 6,378.137 km, J2 = 1.08263 × 10⁻³),
+      about −5° a day for the ISS, which brings its windows about 23 minutes earlier each day instead of 4. A
+      sun-synchronous orbit is built so its plane turns with the mean sun, 0.9856° a day; its node is set by its local
+      mean solar time, RAAN = right ascension of the mean sun + 15° × (node time − 12 h), and its windows fall at the
+      same local mean time every day.</p>
+    <p><strong>Limits.</strong> These are the instants the site passes through the plane. A real window is offset by a
+      few minutes, because the Earth keeps turning during the climb to orbit, and widened by however much the rocket
+      can steer sideways; it is narrowed or set by other things this tool does not know: rendezvous phasing (a launch
+      to meet the ISS is usually a single instant chosen so the vehicles line up), the Sun angle a payload needs, range
+      safety and weather. UT1 is taken as UTC (within 0.9 s). A RAAN from a two-line element set is in the TEME frame,
+      which pairs with Greenwich mean sidereal time as CelesTrak's documentation of SGP4 describes; the J2 drift here is
+      the mean secular rate only. Node time uses the mean sun; the true sun differs by up to 16 minutes (the equation
+      of time).</p>
+    <p class="small muted">References: Meeus, <em>Astronomical Algorithms</em>, 2nd ed., chapter 12; Vallado,
+      <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., launch windows; Curtis, <em>Orbital Mechanics for
+      Engineering Students</em>, section 4.7 (oblateness). Test: <code>tests/launch-window.test.js</code> (Meeus's examples
+      12.a and 12.b as window times; the two daily windows from latitude 28.5° to 51.6° are 30,880.6 s apart and sum to a
+      sidereal day).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

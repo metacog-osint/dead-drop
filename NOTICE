@@ -1,0 +1,21 @@
+Dead Drop Toolbox: Copyright © 2026 Thomas Brummer, The Intelligence Company.
+The code is licensed under the GNU Affero General Public License v3.0 (LICENSE).
+
+Third-party and shared files in this repository keep their own licences:
+
+- site/tic-nav.js, site/tic-nav.css, site/tic-time.js, site/tic-time.css
+  The Intelligence Company's shared site scripts, MIT.
+  Canonical copies: site/shared/ in github.com/metacog-osint/theintelligence-company.
+
+Libraries the tool pages load from public CDNs (not copied into this repository):
+
+- Leaflet 1.9.4, BSD-2-Clause, (c) 2010-2023 Leaflet contributors. https://github.com/Leaflet/Leaflet
+- satellite.js 5.0.0, MIT, (c) 2013 Shashwat Kandadai and UCSC. https://github.com/shashwatak/satellite-js
+- SunCalc 1.9.0, BSD-2-Clause, (c) 2014 Vladimir Agafonkin. https://github.com/mourner/suncalc
+- mgrs 1.0.0, MIT, (c) 2016 Proj4js contributors. https://github.com/proj4js/mgrs
+- Exif.js 2.3.0, MIT, (c) 2008 Jacob Seidelin. https://github.com/exif-js/exif-js
+- JSZip 3.10.1, MIT or GPLv3 (used under MIT), (c) 2009-2016 Stuart Knightley and contributors. https://github.com/Stuk/jszip
+- html2canvas 1.4.1, MIT, (c) 2012 Niklas von Hertzen. https://github.com/niklasvh/html2canvas
+- Chart.js 4.4.0, MIT, (c) 2014-2023 Chart.js contributors. https://github.com/chartjs/Chart.js
+
+Map tiles and data services keep their providers' terms; each tool page names the services it uses.

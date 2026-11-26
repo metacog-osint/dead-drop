@@ -1,0 +1,8 @@
+/* Launch Site Database: legend swatches, map markers' key, and small gaps. */
+.lsd-gap { margin-top: 12px; }
+.lsd-legend { margin: 6px 0 10px; }
+.lsd-legend span.item { display: inline-block; margin-right: 14px; white-space: nowrap; }
+.lsd-swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; vertical-align: -1px;
+  border: 1px solid var(--border); }
+.scroll.all { max-height: none; }
+table.data td button { font-size: 13px; padding: 2px 8px; text-align: left; }

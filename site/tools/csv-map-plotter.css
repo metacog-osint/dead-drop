@@ -1,0 +1,4 @@
+/* CSV to Map Plotter: spacing under the map, the expanded leg list, and the colour picker's size. */
+.cmp-gap { margin-top: 14px; }
+.scroll.all { max-height: none; }
+input[type=color] { width: 60px; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }

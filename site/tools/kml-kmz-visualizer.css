@@ -1,0 +1,6 @@
+/* KML/KMZ Visualizer: the drop highlight, spacing, the expanded list, and description text in popups. */
+.kkv-drop.over { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.kkv-gap { margin-top: 14px; }
+.scroll.all { max-height: none; }
+.kkv-pop { max-width: 280px; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+button.kkv-link { padding: 2px 8px; font-size: 13px; }

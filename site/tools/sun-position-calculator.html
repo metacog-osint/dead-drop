@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sun Position Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Where the Sun stands in the sky from any place at any moment, with sunrise, solar noon, sunset and twilight times, worked out in your browser.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/timezone.js"></script>
+<script src="../lib/sun-position.js"></script>
+<script src="sun-position-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Time · Imagery and observation</p>
+  <h1>Sun Position Calculator</h1>
+  <p class="lede">Where the Sun stands in the sky from a place at a given moment: its <em>azimuth</em> (compass
+    direction, measured clockwise from true north) and its <em>elevation</em> (how high it is above the horizon), with
+    the day's sunrise, solar noon, sunset and twilight times. Useful for planning observations and photographs,
+    reading shadows in imagery, and judging glare.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (degrees)</label>
+          <input type="number" id="lat" step="any" min="-90" max="90" value="28.5721">
+          <span class="hint">North positive.</span></div>
+        <div class="field"><label for="lon">Longitude (degrees)</label>
+          <input type="number" id="lon" step="any" min="-180" max="180" value="-80.6490">
+          <span class="hint">East positive, west negative.</span></div>
+      </div>
+      <div class="field"><span class="hint">Launch sites:</span><div class="actions" id="sites"></div></div>
+      <div class="field"><label for="when">Date and time, as read in the zone below</label>
+        <input type="datetime-local" id="when" step="1">
+        <span class="hint">24-hour clock.</span></div>
+      <div class="field"><label for="zone">Time zone of that time</label>
+        <select id="zone"></select>
+        <span class="hint">UTC unless you pick another. The zone is named, never taken silently from your computer.</span></div>
+      <div class="field" id="otherRow" hidden><label for="other">IANA zone name</label>
+        <input type="text" id="other" placeholder="e.g. Asia/Manila" spellcheck="false" autocomplete="off"></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="now">Now</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="small muted" id="moment"></p>
+      <div class="results" id="results"></div>
+      <h3>The day's events</h3>
+      <p class="small muted">For the solar day that contains your moment: local mean midnight to midnight at this longitude.</p>
+      <div id="events"></div>
+      <h3>Through the day</h3>
+      <div class="scroll" id="track"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Sun's place is found with the low-accuracy method of Meeus, <em>Astronomical Algorithms</em>, chapter 25,
+      the same one the NOAA Solar Calculator uses: from the time, the Sun's mean longitude and mean anomaly, the
+      equation of centre (the correction for Earth's elliptical orbit), then the apparent longitude with small
+      corrections for nutation (the wobble of Earth's axis) and aberration (the shift from Earth's motion). That
+      gives the Sun's <em>declination</em> (its latitude on the sky) and the <em>equation of time</em> (how far a
+      sundial runs ahead of or behind clock time, up to about 16 minutes). The hour angle, how far the Sun is past the
+      local meridian, follows from the time and longitude, and the elevation and azimuth from spherical trigonometry
+      (Meeus chapter 13).</p>
+    <p class="formula">sin(elevation) = sin(lat) sin(dec) + cos(lat) cos(dec) cos(hour angle)</p>
+    <p>The elevation shown first includes atmospheric refraction, which lifts the Sun's image by about half a degree
+      at the horizon and almost nothing overhead (NOAA's formula, for a standard atmosphere); the geometric elevation
+      without it is shown too. Sunrise and sunset are when the Sun's upper edge meets a level horizon, the centre 0.833°
+      below it (0.567° of refraction plus the Sun's 0.267° radius). Civil, nautical and astronomical twilight end when
+      the centre is 6°, 12° and 18° below the horizon; astronomical twilight's end is the start of full darkness.
+      Each event is iterated on the declination at the event itself.</p>
+    <p>Accuracy: about 0.01° in the Sun's position (Meeus), and sunrise and sunset to about a minute between 72° S and
+      72° N (NOAA), more loosely nearer the poles. Real refraction near the horizon changes with temperature and
+      pressure and can move sunrise by a minute or more. The horizon is assumed level and at sea level: hills, and
+      the observer's height, are not taken into account. Times are treated as UTC rather than Terrestrial Time, a
+      difference of about 69 seconds that moves the Sun by under 0.001°.</p>
+    <p>The page uses no outside service and no library: the maths is in <code>lib/sun-position.js</code>.</p>
+    <p class="small muted">References: Meeus, <em>Astronomical Algorithms</em>, 2nd ed., chapters 13, 15, 22, 25 and
+      28; NOAA Global Monitoring Laboratory, Solar Calculator and its "Solar Calculation Details".
+      Test: <code>tests/sun-position.test.js</code> (Meeus Example 25.a: 1992 October 13.0, apparent right ascension
+      198.38083°, declination -7.78507°, equation of time 13.71 min; 15 h 37 min of daylight at 45° N on the June
+      solstice).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

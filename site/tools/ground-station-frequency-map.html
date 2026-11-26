@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground Station Frequency Map · Dead Drop Toolbox</title>
+<meta name="description" content="A reference map of well-known satellite ground stations and the frequency bands their operators say they use, with a band look-up for any frequency.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="ground-station-frequency-map.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/ground-station-frequency.js"></script>
+<script src="ground-station-frequency-map.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms · Orbits and space</p>
+  <h1>Ground Station Frequency Map</h1>
+  <p class="lede">A reference map of well-known satellite ground stations and the frequency bands their operators
+    publicly say they use: <em>uplink</em> (Earth to space, for commands) and <em>downlink</em> (space to Earth, for
+    telemetry and data). Filter by band letter, search, look up which band any frequency falls in, and add your own
+    stations.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Filter</h2>
+      <div class="field"><label for="band">Band (IEEE letter)</label>
+        <select id="band"><option value="all">All bands</option></select>
+        <span class="hint">IEEE letter bands: L 1–2 GHz, S 2–4, C 4–8, X 8–12, Ku 12–18, K 18–27, Ka 27–40 GHz.</span></div>
+      <div class="field"><label for="query">Search</label>
+        <input type="text" id="query" placeholder="Name, operator, country, or a frequency such as 8420 MHz">
+        <span class="hint">A frequency with its unit finds every station with a link covering it.</span></div>
+
+      <h2 class="gs-gap">Which band is this?</h2>
+      <div class="field"><label for="freq">Frequency</label>
+        <input type="text" id="freq" value="2.25 GHz">
+        <span class="hint">With its unit: Hz, kHz, MHz or GHz. A range such as 10.7-12.75 GHz works too.</span></div>
+      <div class="actions"><button type="button" id="classify">Look up</button></div>
+      <div class="results gs-gap" id="bandResults"></div>
+
+      <h2 class="gs-gap">Add a station</h2>
+      <div class="field"><label for="sName">Name</label><input type="text" id="sName" maxlength="80"></div>
+      <div class="row2">
+        <div class="field"><label for="sLat">Latitude (°)</label><input type="number" id="sLat" step="any"></div>
+        <div class="field"><label for="sLon">Longitude (°)</label><input type="number" id="sLon" step="any"></div>
+      </div>
+      <div class="field"><label for="sOp">Operator</label><input type="text" id="sOp" maxlength="80"></div>
+      <div class="field"><label for="sLinks">Frequencies, one per line</label>
+        <textarea id="sLinks" placeholder="2200-2290 MHz down telemetry&#10;2025-2110 MHz up command"></textarea>
+        <span class="hint">A frequency or range with its unit, then optionally up or down and what it is for.</span></div>
+      <div class="actions"><button type="button" id="addStation">Add station</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of ground stations"></div>
+      <h2 class="gs-gap">Stations (<span id="count">0</span>)</h2>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <h2 class="gs-gap" id="detailTitle">Station links</h2>
+      <div id="detail"><p class="empty">Choose a station on the map or in the list.</p></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Band names.</strong> Two systems are in use and they overlap, so the tool shows both and never mixes
+      them. The <em>letter bands</em> (L, S, C, X, Ku, Ka and so on) are IEEE Std 521-2019's radar-band letters, which
+      satellite engineers use loosely too. The <em>ITU bands</em> are the Radio Regulations' decade bands: band N runs
+      from 0.3 × 10<sup>N</sup> to 3 × 10<sup>N</sup> Hz, so VHF (band 8) is 30–300 MHz, UHF (band 9) 300–3,000 MHz
+      and SHF (band 10) 3–30 GHz. A 1.5 GHz signal is therefore IEEE L-band and ITU UHF at the same time. On an exact
+      edge the ITU rule is used for both systems: the lower limit is excluded and the upper included, so 2 GHz is L and
+      3 GHz is ITU UHF. Wavelength is the speed of light, 299,792,458 m/s, divided by the frequency.</p>
+    <p><strong>Space usage differs from the IEEE letters in two places this list shows.</strong> The deep-space
+      "X-band" uplink, 7,145–7,190 MHz, lies in IEEE C-band, and the satellite "Ku-band" downlink, 10.7–12.75 GHz,
+      starts in IEEE X-band. The list keeps the space name in each link's description and files the link under the
+      IEEE letters it actually falls in.</p>
+    <p><strong>The station list.</strong> Each entry gives the band each kind of link uses under the ITU Radio
+      Regulations (Article 5): space operation and space research, 2,025–2,110 MHz up and 2,200–2,290 MHz down;
+      Earth exploration-satellite data, 8,025–8,400 MHz down; deep space, 2,110–2,120 and 7,145–7,190 MHz up,
+      2,290–2,300 and 8,400–8,450 MHz down; NASA's TDRS relay link, 14.6–15.25 GHz up and 13.4–14.05 GHz down; the
+      U.S. military Space-Ground Link Subsystem (SGLS), 1,755–1,850 MHz up and 2,200–2,300 MHz down; fixed-satellite
+      Ku-band, 14.0–14.5 GHz up and 10.7–12.75 GHz down. These are the <em>allocated bands</em>, not the exact
+      channels a station uses on a given day, and a station may also work in bands not listed here (many add
+      Ka-band). Only stations whose purpose and bands their operators state publicly are listed; positions are
+      rounded to 0.01° (about 1 km). It is a reference list, not a monitoring feed.</p>
+    <p><strong>Services.</strong> Map tiles come from OpenStreetMap (tile.openstreetmap.org). Nothing else is
+      fetched; stations you add are kept only in this browser.</p>
+    <p class="small muted">References: IEEE Std 521-2019, <em>IEEE Standard Letter Designations for Radar-Frequency
+      Bands</em>; ITU Radio Regulations, Article 2 (No. 2.1) and Article 5 (Table of Frequency Allocations);
+      Recommendation ITU-R V.431; NASA JPL, <em>DSN Telecommunications Link Design Handbook</em> (810-005); NASA,
+      <em>Space Network Users' Guide</em>. Test: <code>tests/ground-station-frequency.test.js</code> (1.5 GHz is IEEE L
+      and ITU band 9 UHF; 10.7–12.75 GHz overlaps X and Ku; DSS-14 has no Ka-band).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only request it makes is for OpenStreetMap map tiles.</div></footer>
+</body>
+</html>

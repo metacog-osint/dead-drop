@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GNSS Interference Indicators · Dead Drop Toolbox</title>
+<meta name="description" content="A checklist of a satellite-navigation receiver's readings that can point to jamming or spoofing, against open-sky norms or the receiver's own normal.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/gnss-interference.js"></script>
+<script src="gnss-interference-analyzer.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms · Navigation and timing</p>
+  <h1>GNSS Interference Indicators</h1>
+  <p class="lede">Satellite-navigation (GNSS) signals arrive very weak, so other radio signals can drown them
+    (<em>jamming</em>) or imitate them (<em>spoofing</em>). This checklist reads the figures a receiver reports, ideally
+    against that same receiver's normal readings at the same place, and lists which indicators are flagged and what
+    else could cause them. It is a checklist, not a detector: it cannot confirm jamming or spoofing.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="constellations">Constellations the receiver uses</label>
+        <select id="constellations">
+          <option value="single">One (for example GPS only)</option>
+          <option value="multi">Several (GPS with Galileo, GLONASS or BeiDou)</option>
+        </select></div>
+      <h2>Measurements</h2>
+      <p class="small muted">Leave a box empty to skip it. The "normal" boxes are the same receiver's usual readings at
+        this place; with them the checks are much more meaningful.</p>
+      <div class="row2">
+        <div class="field"><label for="cn0">C/N0 now (dB-Hz)</label>
+          <input type="number" id="cn0" step="any" min="0" max="70" value="33">
+          <span class="hint">Carrier-to-noise density: signal strength over the noise, averaged over the satellites tracked.</span></div>
+        <div class="field"><label for="cn0Baseline">Normal C/N0 (dB-Hz)</label>
+          <input type="number" id="cn0Baseline" step="any" min="0" max="70" value="44"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="sats">Satellites used now</label>
+          <input type="number" id="sats" step="1" min="0" value="6">
+          <span class="hint">Used in the position fix, not just in view.</span></div>
+        <div class="field"><label for="satsBaseline">Normal satellites used</label>
+          <input type="number" id="satsBaseline" step="1" min="0" value="10"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="hacc">Horizontal accuracy now (m)</label>
+          <input type="number" id="hacc" step="any" min="0" value="12">
+          <span class="hint">The receiver's own estimate of its error.</span></div>
+        <div class="field"><label for="haccBaseline">Normal horizontal accuracy (m)</label>
+          <input type="number" id="haccBaseline" step="any" min="0" value="3"></div>
+      </div>
+      <h2>Observations</h2>
+      <label class="check"><input type="checkbox" id="agcDrop"> Automatic gain control (AGC) level fell</label>
+      <label class="check"><input type="checkbox" id="posJump"> Position jumped, or drifted against known motion</label>
+      <label class="check"><input type="checkbox" id="timeJump"> Receiver time or clock bias stepped suddenly</label>
+      <label class="check"><input type="checkbox" id="cn0Uniform"> Every satellite at much the same C/N0</label>
+      <label class="check"><input type="checkbox" id="crossCheckFail"> Position disagrees with an independent source</label>
+      <h2>Where and when (optional)</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label><input type="number" id="lat" step="any" min="-90" max="90"></div>
+        <div class="field"><label for="lon">Longitude (°)</label><input type="number" id="lon" step="any" min="-180" max="180"></div>
+      </div>
+      <div class="field"><label for="when">Observation time (UTC)</label>
+        <input type="datetime-local" id="when">
+        <span class="hint">Kept with the copied results only; nothing is looked up.</span></div>
+      <div class="actions"><button class="primary" type="submit">Check indicators</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <p id="summary"></p>
+      <p class="small muted" id="caution"></p>
+      <h3>Indicators</h3>
+      <div class="scroll" id="table"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>C/N0</strong>, the carrier-to-noise density ratio, is the signal power over the noise power in one hertz
+      of bandwidth. Interference adds to the noise, so the receiver sees C / (N0 + I0) instead of C / N0. If the
+      satellites' signal power is unchanged, a drop of D dB from the receiver's normal C/N0 therefore means the noise
+      plus interference rose by D dB, and the interference on its own is 10<sup>D/10</sup> − 1 times the thermal noise.
+      The tool shows that figure in dB: a 3 dB drop means interference about equal to the noise; a 10 dB drop means
+      about nine times the noise (9.5 dB).</p>
+    <p><strong>Satellites.</strong> A three-dimensional fix needs at least four satellites, because the receiver solves
+      for four unknowns: position in three axes and its own clock error. That threshold is physics. Every other
+      threshold here is <em>indicative</em>: a round number near commonly quoted open-sky values, chosen for this
+      checklist, not taken from a standard:</p>
+    <ul>
+      <li>C/N0 with no normal entered: 40 dB-Hz or more reads as normal, 35 to 40 as low, under 35 as well below
+        (open-sky GPS L1 C/A is commonly 40 to 50 dB-Hz; satellites low in the sky and obstructions read lower).</li>
+      <li>C/N0 against normal: down 3 dB or more is flagged, 10 dB or more strongly; up 3 dB or more is flagged as a
+        possible sign of false signals, which are often stronger than real ones.</li>
+      <li>Satellites with no normal entered: under 6 with one constellation, or under 10 with several; against normal,
+        a quarter or more lost is flagged and half or more strongly.</li>
+      <li>Horizontal accuracy: worse than 10 m is flagged and worse than 20 m strongly; against normal, twice and five
+        times the usual figure. Receivers compute this figure from their own error model, and a good spoofer can leave
+        it looking normal.</li>
+    </ul>
+    <p>The ticked observations are signs listed in the spoofing literature and in receiver guidance. A fall in the
+      automatic gain control means more power is arriving in the band, a strong sign of interference when the
+      receiver reports it. The pattern line says whether the flags look more like lost signals (interference) or
+      false signals (spoofing). There is no overall score: the old weighted score could not be defended.</p>
+    <p><strong>Limits.</strong> Every indicator has innocent causes: buildings, foliage, antenna or cable faults,
+      unwanted emissions from nearby electronics, receiver resets, and ionospheric scintillation (rapid fading caused
+      by the upper atmosphere, common near the equator and at high latitudes). Readings from one receiver at one time
+      cannot show where interference comes from or whether it was deliberate. Corroborate with other receivers, other
+      times and published interference monitoring before reporting anything.</p>
+    <p class="small muted">References: Kaplan and Hegarty, <em>Understanding GPS: Principles and Applications</em>,
+      2nd ed., chapter 6 (interference and effective C/N0) and chapter 2 (four satellites for a fix); Humphreys and
+      others, "Assessing the spoofing threat", ION GNSS 2008 (spoofing signs). Test:
+      <code>tests/gnss-interference.test.js</code> (a 10 dB drop in C/N0 implies interference 9.54 dB above the noise).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

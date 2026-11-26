@@ -1,0 +1,3 @@
+/* Ground Track Plotter: gap above the map, the "Show all" scroll state. */
+.gt-gap { margin-top: 14px; }
+.scroll.all { max-height: none; }

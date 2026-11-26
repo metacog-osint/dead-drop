@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RF Source Triangulation · Dead Drop Toolbox</title>
+<meta name="description" content="Estimate where a radio transmitter is from bearings or arrival-time differences at several receivers, with an error ellipse.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="rf-source-triangulation-tool.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/rf-triangulation.js"></script>
+<script src="rf-source-triangulation-tool.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms · Geolocation</p>
+  <h1>RF Source Triangulation</h1>
+  <p class="lede">Estimates where a radio transmitter is from measurements made at several receivers: either the
+    direction each receiver heard it from (its <em>bearing</em>, or angle of arrival), or the differences in the
+    times the signal reached each receiver (<em>time difference of arrival</em>, TDOA). It gives a best position and
+    an error ellipse, the area that should hold the transmitter 95 times in 100 if your stated measurement errors are
+    right.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="method">Method</label>
+        <select id="method">
+          <option value="aoa">Bearings (angle of arrival)</option>
+          <option value="tdoa">Time differences (TDOA)</option>
+        </select></div>
+      <div id="aoa-settings" class="row2">
+        <div class="field"><label for="sigmaDeg">Bearing error, 1σ (degrees)</label>
+          <input type="number" id="sigmaDeg" step="any" min="0" value="3">
+          <span class="hint">The typical error of your direction finder, one standard deviation.</span></div>
+        <div class="field"><label for="declination">Magnetic declination (degrees, east +)</label>
+          <input type="number" id="declination" step="any" value="0">
+          <span class="hint">0 if bearings are from true north. Added to every bearing.</span></div>
+      </div>
+      <div id="tdoa-settings" class="field" hidden><label for="sigmaNs">Timing error per receiver, 1σ (ns)</label>
+        <input type="number" id="sigmaNs" step="any" min="0" value="50">
+        <span class="hint">One nanosecond is 30 cm of range. Arrival times are entered in microseconds (µs).</span></div>
+      <h2>Receivers</h2>
+      <p class="small muted" id="rx-help"></p>
+      <div id="rx-list"></div>
+      <div class="actions">
+        <button type="button" id="add">Add receiver</button>
+        <button type="button" id="example">Load example</button>
+      </div>
+      <label class="check"><input type="checkbox" id="clickAdd"> Click the map to add a receiver there</label>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Estimated position</h2>
+      <div class="results" id="results"></div>
+      <ul class="warnings small" id="warnings"></ul>
+      <div class="map" id="map" role="region" aria-label="Map of receivers, bearing lines and the estimated position"></div>
+      <p class="small muted">Blue: receivers and their bearing lines. Red: the estimate and its 95% error ellipse.
+        Hollow red: another position that fits as well.</p>
+      <h3>Receivers against the fix</h3>
+      <div class="scroll" id="rx-table"></div>
+      <h3 id="pairs-head">Where each pair of bearings crosses</h3>
+      <div class="scroll" id="pairs"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Positions are on a sphere of radius 6,371 km, with latitudes and longitudes in decimal degrees (WGS 84).
+      Distances, bearings and where two bearing lines cross use the great-circle formulas collected by Chris Veness.
+      A bearing line is a great circle, the shortest path on the globe, not a straight line on the map.</p>
+    <p><strong>Bearings.</strong> Each pair of bearings is crossed to give a starting point. The fix is then the
+      position that best fits every bearing at once (weighted least squares, after Stansfield): each bearing counts in
+      proportion to how precisely it places the line at that range, since a bearing error of σ moves the line sideways
+      by about range × σ. With two bearings the fix is where they cross; the ellipse comes from the stated error,
+      not from the spread of crossings. The <em>cut angle</em> is the angle at which two lines cross: near 90° is
+      best, under 30° stretches the fix along the lines.</p>
+    <p><strong>Time differences.</strong> The first receiver is the reference. Each other receiver's arrival time
+      minus the reference's, times the speed of light, is how much farther that receiver is from the transmitter. The
+      tool searches a grid around the receivers, refines every promising point by least squares, and keeps the best.
+      Three receivers can leave two positions that fit exactly; the tool reports both, and a fourth receiver settles it.</p>
+    <p><strong>Checking the fit.</strong> χ² sums each measurement's misfit squared over its stated error squared. With
+      more measurements than the two unknowns, χ² should be near the degrees of freedom (measurements minus 2). Much
+      larger means the measurements disagree by more than your stated errors allow: a wrong bearing, a reflection, or
+      errors larger than you think.</p>
+    <p><strong>What accuracy to expect.</strong> The ellipse is only as honest as the errors you enter, and it assumes
+      they are random and unbiased. Each degree of bearing error moves a line sideways by about 1.75% of the range:
+      175 m at 10 km, 1.75 km at 100 km. Real direction-finding errors are often several degrees, and in towns, hills
+      or near reflecting structures they can be 10° or more and biased rather than random; use the figure measured for
+      your own equipment where you have one (these typical figures are indicative, not a specification). For TDOA,
+      each nanosecond of timing error is 30 cm of range; receivers timed from GNSS commonly agree to tens of
+      nanoseconds, and how precisely an arrival time can be measured also depends on the signal's bandwidth (wider is
+      sharper) and on reflections. Either way the error grows quickly when the transmitter is outside the area the
+      receivers surround.</p>
+    <p><strong>Limits.</strong> Two dimensions: the transmitter is assumed to be at ground level, so an airborne
+      one biases the fix. The sphere differs from the true ellipsoid by up to about 0.3% in distance. A fix from
+      noisy bearings can sit off the true position by more than the ellipse when errors are biased. Treat the
+      result as a search area, not a location.</p>
+    <p>The map uses OpenStreetMap tiles, loaded from tile.openstreetmap.org; Leaflet 1.9.4 is loaded from unpkg.com.
+      No measurement you enter leaves your browser.</p>
+    <p class="small muted">References: Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points", movable-type.co.uk (intersection of two paths, cross-track distance); R. G. Stansfield, "Statistical
+      theory of d.f. fixing", <em>Journal of the IEE</em> 94 part IIIA (1947); D. J. Torrieri, "Statistical theory of
+      passive location systems", <em>IEEE Transactions on Aerospace and Electronic Systems</em> 20(2) (1984).
+      Test: <code>tests/rf-triangulation.test.js</code> (Veness's example: 51.8853 N 0.2545 E on 108.547° and 49.0034 N
+      2.5735 E on 32.435° cross at 50.9078 N 4.5084 E).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Your measurements stay in your browser; only map tiles are fetched.</div></footer>
+</body>
+</html>

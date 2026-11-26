@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Weather Dashboard · Dead Drop Toolbox</title>
+<meta name="description" content="Screens upcoming launches against forecast weather at the pad and current space weather, with indicative limits. A screening aid, not a launch decision.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="launch-weather-dashboard.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/launch-weather.js"></script>
+<script src="launch-weather-dashboard.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Launch · Weather</p>
+  <h1>Launch Weather Dashboard</h1>
+  <p class="lede">Lists the launches scheduled over the next few days and, for each, looks up the forecast at the pad
+    for the launch hour (wind near the ground and high up, thunderstorms, rain) and the current space weather (the
+    Sun's activity and its effect on the space near Earth). It flags anything over a few limits, which you can change.
+    <strong>This is a screening aid, not a launch decision.</strong> Only the launch's own range weather officers,
+    working to the vehicle's launch commit criteria, can say whether the weather allows a launch.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Launches</h2>
+      <div class="field"><label for="days">Look ahead</label>
+        <select id="days">
+          <option value="3">3 days</option>
+          <option value="7" selected>7 days</option>
+          <option value="10">10 days</option>
+          <option value="14">14 days</option>
+        </select>
+        <span class="hint">Launches whose earliest time is within this many days. Forecasts reach about 16 days ahead.</span></div>
+      <div class="actions"><button class="primary" type="submit" id="load">Load launches and weather</button></div>
+      <p class="small muted">Fetches the launch list from Launch Library 2, space weather from NOAA's Space Weather
+        Prediction Center and forecasts from Open-Meteo. Nothing is fetched until you press the button.</p>
+
+      <h3>Add your own launch</h3>
+      <div class="field"><label for="cName">Name</label><input type="text" id="cName" autocomplete="off"></div>
+      <div class="field"><label for="cTime">Launch time (UTC)</label>
+        <input type="datetime-local" id="cTime" step="60">
+        <span class="hint">Entered and stored in UTC.</span></div>
+      <div class="field"><label>Pad position</label>
+        <div class="row2">
+          <input type="number" id="cLat" step="any" min="-90" max="90" placeholder="Latitude" aria-label="Pad latitude, degrees, north positive">
+          <input type="number" id="cLon" step="any" min="-180" max="180" placeholder="Longitude" aria-label="Pad longitude, degrees, east positive">
+        </div>
+        <span class="hint">Decimal degrees, north and east positive. Kennedy LC-39A is 28.6083, -80.6041.</span></div>
+      <div class="field"><label for="cCat">Kind of mission</label><select id="cCat"></select></div>
+      <div class="field"><label>Recovery or landing point at sea (optional)</label>
+        <div class="row2">
+          <input type="number" id="cRLat" step="any" min="-90" max="90" placeholder="Latitude" aria-label="Recovery latitude">
+          <input type="number" id="cRLon" step="any" min="-180" max="180" placeholder="Longitude" aria-label="Recovery longitude">
+        </div>
+        <span class="hint">Adds a wave height check there.</span></div>
+      <div class="actions"><button type="button" id="cAdd">Add launch</button></div>
+
+      <h3>Limits</h3>
+      <p class="small muted">Only the surface wind figure comes from a published vehicle rule; the rest are made up for
+        this tool. See "How this is worked out".</p>
+      <div class="row2">
+        <div class="field"><label for="surfaceWindKt">Surface wind over (kt)</label><input type="number" id="surfaceWindKt" min="0" step="any"></div>
+        <div class="field"><label for="upperWindKt">Upper wind from (kt)</label><input type="number" id="upperWindKt" min="0" step="any"></div>
+        <div class="field"><label for="precipProb">Rain chance from (%)</label><input type="number" id="precipProb" min="0" max="100" step="any"></div>
+        <div class="field"><label for="waveM">Waves from (m)</label><input type="number" id="waveM" min="0" step="any"></div>
+        <div class="field"><label for="gGeneral">G level, most launches</label><input type="number" id="gGeneral" min="1" max="5" step="1"></div>
+        <div class="field"><label for="gConstellation">G level, constellation batch</label><input type="number" id="gConstellation" min="1" max="5" step="1"></div>
+        <div class="field"><label for="sGeneral">S level, most launches</label><input type="number" id="sGeneral" min="1" max="5" step="1"></div>
+        <div class="field"><label for="sCrewed">S level, crewed</label><input type="number" id="sCrewed" min="1" max="5" step="1"></div>
+      </div>
+      <div class="actions"><button type="button" id="resetLimits">Reset limits</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <div>
+      <section class="panel" aria-live="polite">
+        <h2>Space weather now</h2>
+        <p class="msg" id="swxMsg" hidden></p>
+        <div class="results" id="swx"></div>
+        <p class="small muted" id="swxNote"></p>
+        <h3>NOAA forecast, next three UTC days</h3>
+        <div id="swxDays"><p class="empty">Nothing loaded yet.</p></div>
+      </section>
+      <section class="panel" aria-live="polite">
+        <h2>Launches</h2>
+        <div class="field"><label for="country">Country of the launch site</label>
+          <select id="country"><option value="all">All</option></select></div>
+        <div class="scroll" id="launchWrap"><div id="launches"><p class="empty">Nothing loaded yet.</p></div></div>
+        <div class="actions"><button type="button" id="launchAll" hidden>Show all</button></div>
+        <p class="small muted">"Over an indicative limit" and "Worth a closer look" are this page's screening against
+          the limits on the left, not a launch decision or a forecast of a scrub.</p>
+      </section>
+      <section class="panel" id="detail" hidden aria-live="polite">
+        <h2 id="dName"></h2>
+        <div class="results" id="dFacts"></div>
+        <div class="field lwd-gap"><label for="dCat">Kind of mission</label><select id="dCat"></select>
+          <span class="hint">Changes which space-weather limits apply.</span></div>
+        <div id="dChecks"></div>
+        <p class="small muted" id="dNote"></p>
+        <div class="field"><label>Recovery or landing point at sea</label>
+          <div class="row2">
+            <input type="number" id="dRLat" step="any" min="-90" max="90" placeholder="Latitude" aria-label="Recovery latitude">
+            <input type="number" id="dRLon" step="any" min="-180" max="180" placeholder="Longitude" aria-label="Recovery longitude">
+          </div></div>
+        <div class="actions"><button type="button" id="dWaves">Check waves there (Open-Meteo Marine)</button>
+          <button type="button" id="dRemove" hidden>Remove this launch</button></div>
+        <p class="msg" id="dMsg" hidden></p>
+      </section>
+      <section class="panel">
+        <h2>Recent SWPC alerts, watches and warnings</h2>
+        <p class="small muted">As issued by NOAA's Space Weather Prediction Center, newest first. Some will have expired.</p>
+        <div class="scroll" id="alertWrap"><div id="alerts"><p class="empty">Nothing loaded yet.</p></div></div>
+        <div class="actions"><button type="button" id="alertAll" hidden>Show all</button></div>
+      </section>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>What it is not.</strong> US ranges decide launch weather against the vehicle's launch commit criteria,
+      including the Lightning Launch Commit Criteria, using lightning detection, electric field mills, weather radar,
+      balloon wind profiles and cloud observations, none of which a public forecast model supplies. This page only
+      compares model forecasts and public space-weather measurements with a few limits. Its results are indicative and
+      must not be read as a go or no-go.</p>
+    <h3>Weather at the pad</h3>
+    <p>For each launch the page takes Open-Meteo's hourly forecast at the pad and uses the hour nearest the launch's
+      earliest time (its "no earlier than" time, which often slips). Checks:</p>
+    <ul>
+      <li><strong>Surface wind</strong>, the model's sustained wind 10 m above the ground, flagged over 30 knots. The
+        30 kt figure is published for one vehicle: NASA's Falcon 9 / Crew Dragon launch weather criteria limit the
+        sustained wind at the 162 ft (49 m) level of the pad. Other vehicles have other limits, and the wind at 49 m is
+        usually stronger than at 10 m, so this is indicative.</li>
+      <li><strong>Thunderstorm in the forecast</strong> (WMO weather codes 95, 96 and 99), flagged as over. It stands in
+        for the Lightning Launch Commit Criteria, which forbid launching within 10 nautical miles of lightning for 30
+        minutes after it, through or near thunderstorm anvil clouds (10 nautical miles) or debris clouds (3 nautical
+        miles), and when the surface electric field within 5 nautical miles has reached 1,500 V/m in the last 15
+        minutes, among other rules.</li>
+      <li><strong>Upper wind</strong> at 250 hPa (about 34,000 ft, 10.4 km, in the standard atmosphere), flagged from
+        100 kt. Made up for this tool: real upper-level limits concern wind shear and the loads on the vehicle.</li>
+      <li><strong>Chance of precipitation</strong>, flagged from 60 %. Made up for this tool: rain is not itself a launch
+        rule, but thick cloud layers into freezing temperatures (4,500 ft or more) and "disturbed weather" are, and
+        they often come with rain.</li>
+      <li><strong>Wave height</strong> at a recovery point you give, from Open-Meteo Marine, flagged from 3 m. Made up
+        for this tool: recovery ship and droneship sea-state limits are not published.</li>
+    </ul>
+    <h3>Space weather</h3>
+    <p>From NOAA's Space Weather Prediction Center (services.swpc.noaa.gov), on the NOAA Space Weather Scales:</p>
+    <ul>
+      <li><strong>Geomagnetic storms, G1 to G5</strong>, from the planetary Kp index (0 to 9, in thirds: 5- is 4.67):
+        G1 is Kp 5, G2 Kp 6, G3 Kp 7, G4 Kp 8 (including 9-), G5 Kp 9. Below storm level SWPC describes Kp 0 to 2 as
+        quiet, 3 as unsettled and 4 as active. The Kp shown is SWPC's latest estimated 3-hour value.</li>
+      <li><strong>Solar radiation storms, S1 to S5</strong>, from the flux of protons above 10 MeV measured by GOES:
+        10, 100, 1,000, 10,000 and 100,000 pfu (particles per cm² per second per steradian).</li>
+      <li><strong>Radio blackouts, R1 to R5</strong>, from the GOES X-ray flux at 0.1 to 0.8 nm: M1 (10⁻⁵ W/m²), M5, X1
+        (10⁻⁴ W/m²), X10 and X20. Flare classes A, B, C, M and X are decades of that flux from 10⁻⁸ W/m².</li>
+    </ul>
+    <p>The forecast table is NOAA's own: a predicted G level and the chances of S1 or more, of R1 to R2 and of R3 or
+      more, for each of the next three UTC days. A launch on one of those days is checked against the larger of the
+      current and the predicted G level; later launches only against current conditions. The space-weather limits are
+      made up for this tool: G4 for most launches (NOAA lists surface charging, orientation problems and more drag on
+      satellites among G3 to G5 effects); G2 for a constellation batch released low, because in February 2022 a G1 to
+      G2 storm raised drag enough to bring down most of a batch of Starlink satellites released at about 210 km; S3 for
+      most launches (NOAA lists single-event upsets and noise in imaging systems at S3); S1 for crewed launches.</p>
+    <h3>Published criteria, for reference</h3>
+    <p class="small">NASA's Falcon 9 / Crew Dragon launch weather criteria (fact sheet, 2020) include: sustained wind
+      at the 162 ft level of the pad over 30 kt; upper-level wind shear that could cause control problems; flight
+      through a cloud layer 4,500 ft thick or more that extends into freezing temperatures; the lightning, anvil, debris
+      cloud, disturbed weather and field mill rules above; and weather limits at the abort and recovery areas. See the
+      <a href="https://www.nasa.gov/wp-content/uploads/2021/07/falcon9_crewdragon_launch_weather_criteria_fact_sheet.pdf" rel="noopener">fact sheet</a>
+      for the full rules and their exceptions. Most other launch providers and agencies do not publish their weather
+      criteria.</p>
+    <h3>Data</h3>
+    <p class="small">Launch Library 2 by The Space Devs (ll.thespacedevs.com, API 2.2.0; its free tier allows about 15
+      requests an hour, and each button press uses one). Its "weather probability" is the launch's published chance of
+      favourable weather where one exists. Open-Meteo forecast and marine APIs (api.open-meteo.com,
+      marine-api.open-meteo.com). NOAA SWPC JSON products: planetary K index, NOAA scales, alerts, GOES integral protons
+      and X-rays. All are fetched straight from the browser; if a service refuses, the page says which. The kind of
+      mission is guessed from the launch's name and type (for example "Starlink" is a constellation batch); change it
+      in the launch's details.</p>
+    <p class="small muted">References: NOAA Space Weather Scales (SWPC); WMO code table 4677; Krider et al., "Natural
+      and triggered lightning launch commit criteria", AMS Conference on Aviation, Range and Aerospace Meteorology,
+      2006; NASA, Falcon 9 / Crew Dragon launch weather criteria fact sheet. Test:
+      <code>tests/launch-weather.test.js</code> (Kp 4.67 is 5-, G1; 9- is G4; 2.3 × 10⁻⁵ W/m² is M2.3 and R1; 100 pfu is
+      S2; screening levels and limits).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser. Launch, forecast and space-weather data are fetched from Launch Library 2, Open-Meteo and NOAA SWPC only when you ask; your own launches and limits stay in this browser.</div></footer>
+</body>
+</html>

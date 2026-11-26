@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite Conjunction Analysis · Dead Drop Toolbox</title>
+<meta name="description" content="Screens two satellites' element sets for close approaches in a time window: when they pass closest, how close, and how fast.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="satellite-conjunction-analysis.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/conjunction.js"></script>
+<script src="satellite-conjunction-analysis.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Satellite Conjunction Analysis</h1>
+  <p class="lede">Screens two objects in orbit for <em>close approaches</em> (conjunctions) in a time window: each
+    time they pass nearest each other, the <em>time of closest approach</em> (TCA), the <em>miss distance</em> between
+    them then, and how fast they pass. It is a first look from public element sets, not a collision risk: the miss
+    distance carries an error of a kilometre or more.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tleA">Object A element set (TLE)</label>
+        <textarea id="tleA" rows="4" spellcheck="false" autocomplete="off"></textarea></div>
+      <div class="field"><label for="tleB">Object B element set (TLE)</label>
+        <textarea id="tleB" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">Each an optional name line, then line 1 and line 2. Get current ones with the <a href="tle-analyzer.html">TLE Analyzer</a>; use sets with epochs close to the window.</span></div>
+      <div class="field"><label for="start">Start (UTC)</label><input type="datetime-local" id="start" step="1"></div>
+      <div class="row2">
+        <div class="field"><label for="hours">Window (hours)</label>
+          <input type="number" id="hours" min="0.1" max="168" step="any" value="24"></div>
+        <div class="field"><label for="threshold">Screening distance (km)</label>
+          <input type="number" id="threshold" min="0" max="1000" step="any" value="10">
+          <span class="hint">Approaches closer than this are marked.</span></div>
+      </div>
+      <div class="field"><label for="step">Search step (seconds)</label>
+        <input type="number" id="step" min="5" max="300" step="any" value="30">
+        <span class="hint">How often the separation is sampled before each minimum is refined to a millisecond.</span></div>
+      <label class="check"><input type="checkbox" id="insideOnly"> List only approaches inside the screening distance</label>
+      <div class="actions"><button class="primary" type="submit">Screen</button>
+        <button type="button" id="now">Start now</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg info">A miss distance from element sets is a screening figure with kilometre-level error. It is
+        not a probability of collision, which needs each object's position uncertainty and size.</p>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="summary"></div>
+      <h3>Closest approaches</h3>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+      <p class="small muted">Times in your chosen zone (the Time button). Radial, along-track and cross-track are the
+        parts of the miss along object A's position from the Earth's centre, along its direction of travel, and square
+        to its orbit plane.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves both element sets through the window. The separation
+      between the two is sampled at the search step; every sample lower than both its neighbours brackets a closest
+      approach, which a golden-section search then narrows to a millisecond. Sampling alone is not enough: two low
+      orbits crossing at 10 km/s move 300 km relative to each other in 30 seconds, so the nearest sample can be
+      hundreds of kilometres from the true miss distance. At each closest approach the page gives the miss distance,
+      the relative speed, the angle between the two directions of travel (near 180° is head-on), and the miss split
+      into object A's radial, along-track and cross-track directions. Where the two are moving apart at the start of
+      the window, or closing at its end, the nearest approach lies outside the window and is reported apart.</p>
+    <p><strong>Limits.</strong> Element sets and SGP4 place an object to within about a kilometre at the set's
+      epoch, and the error grows by one to a few kilometres a day, mostly along the track (a rough guide, worse for
+      low objects in a strong atmosphere and for objects that manoeuvre). So a miss distance from this page is a
+      screening figure with kilometre-level error, good for deciding which pairs deserve a closer look, not for
+      judging whether they will collide. Operators judge that from a <em>probability of collision</em>, worked out
+      from both objects' position <em>covariance</em> (their uncertainty, stated as an ellipsoid) and combined size,
+      as carried in a Conjunction Data Message from a tracking service; this page cannot give one. The screening
+      distance is your choice; it is not a safety threshold. No network service is used beyond loading the page.</p>
+    <p class="small muted">References: Alfano and Negron, "Determining satellite close approaches", <em>Journal of
+      the Astronautical Sciences</em> 41(2), 1993; Press et al., <em>Numerical Recipes</em>, 3rd ed., section 10.2
+      (golden-section search); Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., section 3.3
+      (the radial, along-track, cross-track frame). Test: <code>tests/conjunction.test.js</code> (two circular orbits
+      500 km up crossing at right angles, 0.01 rad apart: miss 48.635 km at 2,833.887 s, passing at 10.766 km/s; a
+      straight-line pass that sampling at 60 s puts at 100.1 km and refinement finds at 5 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

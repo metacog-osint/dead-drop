@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eclipse Prediction Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="How long a satellite in a circular orbit spends in the Earth's shadow each orbit, from its altitude and beta angle.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/eclipse-prediction.js"></script>
+<script src="eclipse-prediction-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Eclipse Prediction Calculator</h1>
+  <p class="lede">How many minutes of each orbit a satellite spends in the Earth's shadow, with no sunlight on its
+    solar panels. It depends on the orbit's altitude and its <em>beta angle</em>: how far the Sun stands out of the
+    plane of the orbit. Enter the beta angle, or work it out from the orbit's tilt, its orientation and a date.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="altitude">Altitude of the circular orbit (km)</label>
+        <input type="number" id="altitude" step="any" value="550">
+        <span class="hint">Height above the equator. The orbit radius is this plus 6,378.137 km.</span></div>
+      <div class="field"><label for="mode">Beta angle</label>
+        <select id="mode">
+          <option value="direct">Enter it</option>
+          <option value="orbit">Work it out from the orbit and a date</option>
+        </select></div>
+      <div class="field" id="f-beta"><label for="beta">Beta angle (degrees)</label>
+        <input type="number" id="beta" min="-90" max="90" step="any" value="30">
+        <span class="hint">0 means the Sun lies in the orbit plane (longest eclipses); ±90 means it shines straight down on the plane (no eclipse).</span></div>
+      <div id="f-orbit" hidden>
+        <div class="field"><label for="inclination">Inclination (degrees)</label>
+          <input type="number" id="inclination" min="0" max="180" step="any" value="51.6">
+          <span class="hint">The orbit's tilt against the equator: 0 equatorial, 90 polar, over 90 retrograde.</span></div>
+        <div class="field"><label for="raan">Right ascension of the ascending node, RAAN (degrees)</label>
+          <input type="number" id="raan" step="any" value="0">
+          <span class="hint">Where the orbit crosses the equator going north, measured from the March equinox direction. Take it from a current element set (TLE): it drifts by several degrees a day in low orbit.</span></div>
+        <div class="field"><label for="when">Date and time (UTC)</label>
+          <input type="datetime-local" id="when" step="60">
+          <span class="hint">The Sun's position for this moment sets the beta angle.</span></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>Eclipse length against beta angle at this altitude</h3>
+      <div id="table"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Earth's shadow is taken as a cylinder of radius R = 6,378.137 km stretching away from the Sun. For a
+      circular orbit of radius r = R + h, the share of each orbit spent inside it is</p>
+    <p class="formula">f = (1/180°) · arccos( √(h² + 2Rh) / (r · cos β) )</p>
+    <p>and there is no eclipse at all when |β| is at or above the <em>critical beta angle</em>
+      β* = arcsin(R / r). The eclipse lasts f times the orbital period, T = 2π√(r³/μ), with
+      μ = 398,600.4418 km³/s².</p>
+    <p>When the beta angle is worked out, it is the angle between the Sun's direction and the orbit plane:
+      <span class="mono">β = arcsin(cos L sin i sin Ω − sin L cos ε sin i cos Ω + sin L sin ε cos i)</span>, with
+      i the inclination, Ω the RAAN, L the Sun's ecliptic longitude and ε the tilt of the Earth's axis
+      (obliquity), both from the Astronomical Almanac's low-precision formulae (about 0.01° from 1950 to 2050).
+      A positive beta means the Sun is on the north side of the orbit.</p>
+    <p>Limits: circular orbits only; the shadow is a cylinder, so the partly shadowed edge (the
+      <em>penumbra</em>, which adds several seconds at each end in low orbit) and the bending of sunlight by the
+      atmosphere are left out; the Sun is taken as fixed during one orbit. The beta angle changes from day to day as
+      the Sun moves and the orbit's node drifts, so a result holds for the date entered, not the whole year.</p>
+    <p class="small muted">References: Gilmore (ed.), <em>Spacecraft Thermal Control Handbook</em>, Vol. I, 2nd ed.,
+      chapter 2 (eclipse fraction and beta angle); Vallado, <em>Fundamentals of Astrodynamics and Applications</em>,
+      4th ed., chapter 5 (eclipses, cylindrical shadow); Meeus, <em>Astronomical Algorithms</em>, 2nd ed., chapter 25
+      (the Sun's position). Test: <code>tests/eclipse-prediction.test.js</code> (550 km: period 95.650 min; at
+      β = 30° the eclipse lasts 33.583 min; no eclipse above β = 67.016°; Meeus's example 25.a for the Sun).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

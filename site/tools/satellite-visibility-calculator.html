@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite Visibility Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Where a satellite is in your sky at a given time, whether sunlight is on it, whether your sky is dark, and so whether you could see it with the eye.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/satellite-visibility.js"></script>
+<script src="satellite-visibility-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Satellite Visibility Calculator</h1>
+  <p class="lede">Where a satellite stands in your sky at one moment: its <em>azimuth</em> (compass direction,
+    clockwise from true north) and <em>elevation</em> (how high above the horizon), how far away it is, whether
+    sunlight reaches it or it is in the Earth's shadow, and whether your own sky is dark enough to see it with the
+    eye.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set (TLE)</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2. Get a current one with the <a href="tle-analyzer.html">TLE Analyzer</a>.</span></div>
+      <div class="field"><label for="site">Place</label>
+        <select id="site"><option value="">Enter below</option></select></div>
+      <div class="row3">
+        <div class="field"><label for="lat">Latitude (°)</label><input type="number" id="lat" step="any" value="40.71"></div>
+        <div class="field"><label for="lon">Longitude (°)</label><input type="number" id="lon" step="any" value="-74.01"></div>
+        <div class="field"><label for="height">Height (m)</label><input type="number" id="height" step="any" value="0"></div>
+      </div>
+      <p class="small muted">North and east positive. Height above the WGS 84 ellipsoid; sea level is close enough.</p>
+      <div class="field"><label for="when">Time (UTC)</label>
+        <input type="datetime-local" id="when" step="1"></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="now">Now</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="results"></div>
+      <h3>Sky view</h3>
+      <div id="sky"></div>
+      <p class="small muted">Centre is straight overhead, the edge is the horizon, north at the top and east to the
+        right as you look up. The line is the track from 10 minutes before to 10 minutes after; the dot is the chosen time.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves the element set to the chosen time and gives the
+      satellite's position in the <em>TEME</em> frame, an Earth-centred frame that does not turn with the Earth. The
+      position is turned into the Earth-fixed frame through Greenwich mean sidereal time (IAU-82). Your place is set on
+      the WGS 84 ellipsoid, and the line from you to the satellite is split into east, north and up parts:
+      azimuth = atan2(east, north), elevation = asin(up / range).</p>
+    <p>The Sun's direction comes from a low-precision solar formula good to about 0.01°. Whether sunlight reaches the
+      satellite uses a <em>conical</em> shadow: the Sun and the Earth are seen as discs from the satellite. When the
+      Earth's disc covers the whole Sun the satellite is in the <em>umbra</em> (full shadow); when it covers part,
+      the <em>penumbra</em> (partial shadow); otherwise it is sunlit. The Earth is a sphere of radius 6,378 km here
+      and the atmosphere's dimming near the edge of the shadow is ignored.</p>
+    <p>"Can be seen with the eye" means: above the horizon, not in the umbra, and the Sun at least 6° below your
+      horizon (the end of civil twilight). That is a common rule, not a brightness model: a small or distant
+      satellite can meet it and still be too faint to see, and a bright one can sometimes be seen in a lighter sky.
+      Refraction, which lifts objects near the horizon by about half a degree, is not applied.</p>
+    <p>SGP4's error grows with time from the element set's epoch, typically one to a few kilometres a day for low
+      orbits (a rough guide), so the page warns when the chosen time is more than 7 days from the epoch.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      sections 3.2 and 3.5 (WGS 84, sidereal time), 4.4 (look angles), Algorithm 29 (Sun), 5.3 (shadow); Montenbruck
+      and Gill, <em>Satellite Orbits</em>, section 3.4.2 (conical shadow). Test:
+      <code>tests/satellite-visibility.test.js</code> (Vallado Example 3-5, GMST 152.578788°; Example 5-1, Sun at
+      0.97719, 0.19244, 0.08343 AU; WGS 84 at 45° N: x 4517.591, z 4487.348 km; umbra and penumbra limits).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

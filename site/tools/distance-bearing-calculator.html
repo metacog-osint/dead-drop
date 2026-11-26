@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distance and Bearing Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Great-circle distance, initial and final bearing, and midpoint between two latitude and longitude points.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/distance-bearing.js"></script>
+<script src="distance-bearing-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping</p>
+  <h1>Distance and Bearing Calculator</h1>
+  <p class="lede">The shortest distance over the Earth's surface between two points (the <em>great-circle
+    distance</em>), the compass direction to set off in from the first point (the <em>initial bearing</em>, degrees
+    clockwise from true north), the direction you are travelling when you arrive (the <em>final bearing</em>, which
+    differs from the initial one on all but north-south and equator paths), and the point halfway along the way.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Point A (start)</h2>
+      <div class="field"><label for="placeA">Known place</label>
+        <select id="placeA"></select></div>
+      <div class="row2">
+        <div class="field"><label for="latA">Latitude (°)</label>
+          <input type="number" id="latA" step="any" value="28.6084"></div>
+        <div class="field"><label for="lonA">Longitude (°)</label>
+          <input type="number" id="lonA" step="any" value="-80.6043"></div>
+      </div>
+      <h2>Point B (end)</h2>
+      <div class="field"><label for="placeB">Known place</label>
+        <select id="placeB"></select></div>
+      <div class="row2">
+        <div class="field"><label for="latB">Latitude (°)</label>
+          <input type="number" id="latB" step="any" value="5.2394"></div>
+        <div class="field"><label for="lonB">Longitude (°)</label>
+          <input type="number" id="lonB" step="any" value="-52.7681"></div>
+      </div>
+      <p class="hint small muted">Decimal degrees: north and east positive, south and west negative. The coordinate
+        converter turns degrees, minutes and seconds into decimal degrees.</p>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="swap">Swap A and B</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <p class="small muted" id="note" hidden></p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Earth is treated as a sphere of radius 6,371 km (the mean radius). The distance uses the
+      <em>haversine</em> formula, which stays accurate for short distances:</p>
+    <p class="formula">a = sin²(Δφ/2) + cos φ<sub>A</sub> cos φ<sub>B</sub> sin²(Δλ/2) &nbsp;&nbsp; d = 2R · atan2(√a, √(1−a))</p>
+    <p>where φ is latitude and λ longitude. The initial bearing is</p>
+    <p class="formula">θ = atan2(sin Δλ cos φ<sub>B</sub>, cos φ<sub>A</sub> sin φ<sub>B</sub> − sin φ<sub>A</sub> cos φ<sub>B</sub> cos Δλ)</p>
+    <p>and the final bearing is the bearing from B back to A turned through 180°. The midpoint is the point halfway
+      along the great circle, not the average of the coordinates. Nautical miles use 1 NM = 1.852 km and statute
+      miles 1 mi = 1.609344 km, both exact.</p>
+    <p><strong>Limits.</strong> A sphere is not the Earth's true shape (an ellipsoid, WGS 84); distances on the
+      sphere differ from ellipsoidal ones by up to about 0.5%, and bearings by a fraction of a degree. Use an
+      ellipsoidal method (Vincenty or Karney) for survey or navigation work. Bearings are from true north, not
+      magnetic north. When the two points are on exactly opposite sides of the Earth, every direction is a shortest
+      path, so no bearing or midpoint is given. The known places are approximate launch-site positions, good to a
+      few kilometres.</p>
+    <p class="small muted">Reference: Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points", movable-type.co.uk. Test: <code>tests/distance-bearing.test.js</code> (Land's End to John o' Groats:
+      968.9 km, initial bearing 009° 07′ 11″, final bearing 011° 16′ 31″).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

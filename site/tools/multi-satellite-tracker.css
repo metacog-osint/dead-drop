@@ -1,0 +1,5 @@
+/* Multi-Satellite Tracker: colour swatches in the table, small gaps, the "Show all" scroll state. */
+.mst-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.mst-gap { margin-top: 14px; }
+.mst-link { background: none; border: none; padding: 0; color: var(--link); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
+.scroll.all { max-height: none; }

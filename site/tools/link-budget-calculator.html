@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Link Budget Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Received power and link margin for a radio link over a clear line-of-sight path, with free-space loss per ITU-R P.525.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/link-budget.js"></script>
+<script src="link-budget-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms</p>
+  <h1>Link Budget Calculator</h1>
+  <p class="lede">Adds up the gains and losses between a radio transmitter and a receiver to give the power that
+    arrives, and how far that power sits above the weakest signal the receiver can use (its <em>sensitivity</em>).
+    The difference is the <em>link margin</em>: positive means the link should close, negative means it should not.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Transmitter</h2>
+      <div class="field"><label for="txPower">Transmit power (dBm)</label>
+        <input type="number" id="txPower" step="any" value="30">
+        <span class="hint">Decibels relative to one milliwatt: 30 dBm is 1 W, 40 dBm is 10 W.</span></div>
+      <div class="row2">
+        <div class="field"><label for="txGain">Antenna gain (dBi)</label>
+          <input type="number" id="txGain" step="any" value="2">
+          <span class="hint">Gain over an ideal antenna that radiates equally in every direction.</span></div>
+        <div class="field"><label for="txLoss">Cable and connector loss (dB)</label>
+          <input type="number" id="txLoss" step="any" min="0" value="1"></div>
+      </div>
+      <h2>Receiver</h2>
+      <div class="row2">
+        <div class="field"><label for="rxGain">Antenna gain (dBi)</label>
+          <input type="number" id="rxGain" step="any" value="15"></div>
+        <div class="field"><label for="rxLoss">Cable and connector loss (dB)</label>
+          <input type="number" id="rxLoss" step="any" min="0" value="2"></div>
+      </div>
+      <div class="field"><label for="rxSens">Receiver sensitivity (dBm)</label>
+        <input type="number" id="rxSens" step="any" value="-110">
+        <span class="hint">The weakest signal the receiver decodes at its rated bandwidth and error rate, from its data sheet.</span></div>
+      <h2>Path</h2>
+      <div class="row2">
+        <div class="field"><label for="freq">Frequency (MHz)</label>
+          <input type="number" id="freq" step="any" min="0" value="437.5"></div>
+        <div class="field"><label for="distance">Distance (km)</label>
+          <input type="number" id="distance" step="any" min="0" value="2000">
+          <span class="hint">Straight-line distance; for a satellite, the slant range.</span></div>
+      </div>
+      <div class="field"><label for="otherLoss">Other path losses (dB)</label>
+        <input type="number" id="otherLoss" step="any" min="0" value="3">
+        <span class="hint">Your own allowance for atmospheric gases, rain, polarisation mismatch and pointing error.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>The budget, line by line</h3>
+      <div id="budget"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The <em>effective isotropic radiated power</em> (EIRP) is the transmit power plus the antenna gain minus the
+      cable loss. The <em>free-space path loss</em> is the spreading of the wave over distance d at wavelength λ:</p>
+    <p class="formula">L<sub>fs</sub> = 20 log₁₀(4π d / λ) = 32.45 + 20 log₁₀ f(MHz) + 20 log₁₀ d(km) dB</p>
+    <p>The received power is EIRP − L<sub>fs</sub> − other losses + receive antenna gain − receive cable loss, and the
+      margin is the received power minus the sensitivity. The range at zero margin follows because free-space loss
+      grows by 20 dB for every tenfold increase in distance: d × 10<sup>margin/20</sup>.</p>
+    <p>The margin wording is a rule of thumb, not a standard: below 0 dB the signal is under the stated sensitivity;
+      under 6 dB leaves little room for fading and pointing error; 6 dB or more is a margin often planned for.
+      Fast-fading or low-elevation links are usually planned with more.</p>
+    <p><strong>Limits.</strong> Free-space loss assumes a clear line of sight with nothing in or near the path. Over
+      the ground, reflections, terrain, buildings and the curve of the Earth usually add a great deal more loss; ITU-R
+      P.452, P.526 and P.1546 cover those cases. The answer is only as good as the sensitivity figure, which holds for
+      one bandwidth and modulation. Antennas are assumed to be pointed at each other and in each other's far field.</p>
+    <p class="small muted">Reference: ITU-R Recommendation P.525, <em>Calculation of free-space attenuation</em>,
+      section 2.2 (the 32.45 dB constant is computed from the speed of light as 32.448 dB; P.525 rounds it to 32.4);
+      Sklar, <em>Digital Communications</em>, 2nd ed., chapter 5 (link budget analysis).
+      Test: <code>tests/link-budget.test.js</code> (437.5 MHz over 2,000 km gives 151.29 dB free-space loss).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

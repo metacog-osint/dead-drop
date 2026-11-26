@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delta-V Mission Planner · Dead Drop Toolbox</title>
+<meta name="description" content="The velocity change and propellant to move between two circular orbits, with an inclination change done the cheapest way.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/delta-v.js"></script>
+<script src="delta-v-mission-planner.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Delta-V Mission Planner</h1>
+  <p class="lede">How much a spacecraft must change its velocity (its <em>delta-v</em>, in km/s) to move from one
+    circular orbit to another, including a change of <em>inclination</em> (the orbit's tilt against the equator), and
+    how much propellant that takes. It compares ways of doing the tilt change, because where it is done makes a
+    large difference.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><span class="hint">Examples:</span>
+        <div class="actions">
+          <button type="button" data-preset="cape-geo">300 km, 28.5° to GEO</button>
+          <button type="button" data-preset="iss-geo">550 km, 51.6° to GEO</button>
+          <button type="button" data-preset="moon">To the Moon's distance</button>
+          <button type="button" data-preset="geo-incl">GEO 0.1° tilt fix</button>
+          <button type="button" data-preset="deorbit">Deorbit from 550 km</button>
+          <button type="button" data-preset="plane">Tilt change in LEO</button>
+        </div></div>
+      <h3>Starting orbit (circular)</h3>
+      <div class="row2">
+        <div class="field"><label for="r1">Radius (km)</label>
+          <input type="number" id="r1" step="any" value="6928.137"></div>
+        <div class="field"><label for="i1">Inclination (°)</label>
+          <input type="number" id="i1" min="0" max="180" step="any" value="51.6"></div>
+      </div>
+      <h3>Target orbit (circular)</h3>
+      <div class="row2">
+        <div class="field"><label for="r2">Radius (km)</label>
+          <input type="number" id="r2" step="any" value="42164.137"></div>
+        <div class="field"><label for="i2">Inclination (°)</label>
+          <input type="number" id="i2" min="0" max="180" step="any" value="0"></div>
+      </div>
+      <p class="hint small muted">Radius from the Earth's centre: 6,378.137 km plus the altitude. Geostationary (GEO) is 42,164 km.</p>
+      <label class="check"><input type="checkbox" id="oneBurn"> One burn only: set the far side of the orbit at the
+        target radius and stop (a deorbit or perigee-lowering burn)</label>
+      <h3>Spacecraft</h3>
+      <div class="row2">
+        <div class="field"><label for="wetMass">Starting mass (kg)</label>
+          <input type="number" id="wetMass" step="any" value="1000">
+          <span class="hint">Including propellant.</span></div>
+        <div class="field"><label for="isp">Specific impulse (s)</label>
+          <input type="number" id="isp" step="any" value="300">
+          <span class="hint">Engine efficiency. Chemical about 300 to 450; electric 1,500 to 3,000 or more.</span></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="small muted" id="bestName"></p>
+      <div class="results" id="results"></div>
+      <h3>Ways of doing the inclination change</h3>
+      <div id="table"></div>
+      <p class="small muted" id="note"></p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Transfer.</strong> A <em>Hohmann transfer</em> is the two-burn route between circular orbits of radius
+      r<sub>1</sub> and r<sub>2</sub>: the first burn puts the spacecraft on an ellipse that just touches both orbits
+      (semi-major axis a<sub>t</sub> = (r<sub>1</sub> + r<sub>2</sub>)/2), the second, half an orbit later, matches the
+      target orbit. Speeds come from the vis-viva equation, <span class="mono">v = √(μ(2/r − 1/a))</span>, with
+      μ = 398,600.4418 km³/s². The transfer takes half the ellipse's period, <span class="mono">π√(a<sub>t</sub>³/μ)</span>.</p>
+    <p><strong>Inclination change.</strong> Turning the orbit plane by Δi costs most where the spacecraft moves
+      fastest. Done alone, it costs <span class="mono">2v sin(Δi/2)</span>. Folded into a burn that also changes the
+      speed from v<sub>a</sub> to v<sub>b</sub>, the burn costs
+      <span class="mono">√(v<sub>a</sub>² + v<sub>b</sub>² − 2v<sub>a</sub>v<sub>b</sub> cos Δi)</span>, which is
+      less than doing the two separately. The table shows doing it alone at the larger orbit, folding all of it into
+      the burn at the larger radius (where the spacecraft is slowest), and the cheapest split between the two burns,
+      found numerically. The results above use the cheapest split.</p>
+    <p><strong>Propellant.</strong> The rocket equation, <span class="mono">m<sub>final</sub> = m<sub>start</sub> ·
+      e<sup>−Δv/(I<sub>sp</sub> g<sub>0</sub>)</sup></span>, with g<sub>0</sub> = 9.80665 m/s². "Mass left" is the mass
+      after the burns; it is not the dry mass unless every drop of propellant is used.</p>
+    <p>Limits: circular orbits only; impulsive burns (a low-thrust electric engine spirals out and needs more delta-v
+      than this); both orbits are assumed to cross on the line where the burns happen, so the inclination difference is
+      the whole plane change (a difference in the orbits' orientation, their RAAN, would add more); no launch, gravity
+      losses, drag or margin. "To the Moon's distance" ignores the Moon's own gravity: its first burn is close to a
+      trans-lunar injection, but its second burn is not a lunar orbit insertion.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      sections 6.3 (Hohmann transfer, Example 6-1) and 6.4 (plane changes, combined maneuvers and the minimum split);
+      Curtis, <em>Orbital Mechanics for Engineering Students</em>, chapter 6. Test: <code>tests/delta-v.test.js</code>
+      (Vallado's Example 6-1: 2.457 + 1.478 = 3.935 km/s in 5.257 h; with a 28.5° plane change folded into the apogee
+      burn, 4.294 km/s; the best split, about 2.2° at the first burn, 4.270 km/s).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

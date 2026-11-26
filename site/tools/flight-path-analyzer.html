@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Path Analyzer · Dead Drop Toolbox</title>
+<meta name="description" content="Ground track and end point of a flight from a launch point, azimuth and range, with the minimum-energy ballistic apogee, speed and flight time.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/distance-bearing.js"></script>
+<script src="../lib/flight-path.js"></script>
+<script src="flight-path-analyzer.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Launch and trajectory · Geography and mapping</p>
+  <h1>Flight Path Analyzer</h1>
+  <p class="lede">From a launch point, a direction (the <em>azimuth</em>, degrees clockwise from true north) and a
+    ground range, this draws the path over the ground (the <em>ground track</em>) and gives the end point. For a
+    ballistic flight it also gives the textbook <em>minimum-energy</em> trajectory for that range: the one that needs
+    the lowest speed at engine cut-off, with how high it climbs (its <em>apogee</em>) and how long it takes.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Launch point</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" step="any" value="28.5"></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" step="any" value="-80.6"></div>
+      </div>
+      <div class="field"><label for="azimuth">Azimuth (° true)</label>
+        <input type="number" id="azimuth" step="any" value="90">
+        <span class="hint">Direction of flight at the launch point, clockwise from true north: 90 is due east.</span></div>
+      <div class="field"><label for="range">Ground range (km)</label>
+        <input type="number" id="range" min="0" step="any" value="1000">
+        <span class="hint">Distance over the surface from launch to the end point; at most 20,015 km.</span></div>
+      <div class="field"><label for="time">Flight time (minutes, optional)</label>
+        <input type="number" id="time" min="0" step="any" value="">
+        <span class="hint">Your own figure, if you have one: the page gives the average speed along the ground track
+          and sets it beside the minimum-energy time.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <div>
+      <section class="panel" aria-live="polite">
+        <h2>Ground track</h2>
+        <div class="results" id="results"></div>
+        <h3>Minimum-energy ballistic trajectory (an idealisation)</h3>
+        <div class="results" id="ballistic"></div>
+      </section>
+      <section class="panel">
+        <div id="map" class="map" role="region" aria-label="Map of the ground track"></div>
+      </section>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Ground track.</strong> The Earth is a sphere of radius 6,371 km. The end point is the
+      <em>destination point</em> a distance d along the great circle that leaves the launch point on the azimuth:</p>
+    <p class="formula">φ<sub>2</sub> = asin(sin φ<sub>1</sub> cos δ + cos φ<sub>1</sub> sin δ cos θ) &nbsp;&nbsp;
+      λ<sub>2</sub> = λ<sub>1</sub> + atan2(sin θ sin δ cos φ<sub>1</sub>, cos δ − sin φ<sub>1</sub> sin φ<sub>2</sub>)</p>
+    <p>with δ = d / R. The track is drawn through a point every 50 km or so. The <em>arrival bearing</em> is the
+      direction of travel at the end point.</p>
+    <p><strong>Minimum-energy trajectory.</strong> In the free-flight phase a ballistic object follows part of an
+      ellipse with the Earth's centre at one focus. With Ψ the range angle at the Earth's centre (range / R), the
+      lowest speed v at cut-off that reaches the range, and the climb angle above the horizontal that it needs, are</p>
+    <p class="formula">Q = v² R / μ = 2 sin(Ψ/2) / (1 + sin(Ψ/2)) &nbsp;&nbsp; climb angle = (180° − Ψ) / 4</p>
+    <p>with μ = 398,600.4418 km³/s². The ellipse has semi-major axis a = R / (2 − Q) and eccentricity
+      e² = 1 + Q(Q − 2) cos²(climb angle); the apogee is a(1 + e) from the Earth's centre, and the flight time comes
+      from Kepler's equation between cut-off and re-entry. For short ranges this tends to the flat-Earth result: a
+      45° shot that rises to a quarter of its range.</p>
+    <p><strong>Limits.</strong> The ballistic figures are an idealisation, not a prediction for any real vehicle:
+      cut-off and re-entry are taken at the surface, with no atmosphere, no powered ascent and a non-rotating Earth.
+      Real missiles often fly <em>lofted</em> (higher, shorter) or <em>depressed</em> (lower, faster) paths, and the
+      powered phase adds height and time; real apogees for a given range can be well above or below the figure here.
+      On the real, rotating Earth the path over the ground bends away from this great circle and the speed, angle
+      and time needed change, by amounts that grow with flight time: the surface at the equator moves at about
+      465 m/s, some 840 km in a 30-minute flight. A sphere, not the WGS 84 ellipsoid: positions can differ by up to about 0.5% of the range. Map
+      tiles come from OpenStreetMap (tile.openstreetmap.org); nothing else is sent anywhere.</p>
+    <p class="small muted">References: Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points", movable-type.co.uk (destination point); Bate, Mueller and White, <em>Fundamentals of
+      Astrodynamics</em>, chapter 6 (ballistic missile trajectories). Test: <code>tests/flight-path.test.js</code>
+      (a quarter of the way round the Earth, 10,007.5 km: minimum-energy apogee R(√2 − 1)/2 = 1,319.5 km; 1,000 km:
+      239.9 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only request it makes is for OpenStreetMap map tiles.</div></footer>
+</body>
+</html>

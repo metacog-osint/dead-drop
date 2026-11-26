@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground Track Plotter · Dead Drop Toolbox</title>
+<meta name="description" content="Draws the path on the ground beneath a satellite from its element set, split cleanly where it crosses the 180° meridian.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="ground-track.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/ground-track.js"></script>
+<script src="ground-track.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Geography and mapping</p>
+  <h1>Ground Track Plotter</h1>
+  <p class="lede">Draws a satellite's <em>ground track</em>, the path traced on the Earth by the point directly
+    beneath it, for one or more orbits from a chosen time, and lists the points with their height above the
+    Earth. Each orbit the track shifts west, because the Earth turns underneath it.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set (TLE)</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2. Get a current one with the <a href="tle-analyzer.html">TLE Analyzer</a>.</span></div>
+      <div class="field"><label for="start">Start (UTC)</label><input type="datetime-local" id="start" step="1"></div>
+      <div class="row2">
+        <div class="field"><label for="revs">Orbits</label>
+          <input type="number" id="revs" min="0.1" max="15" step="any" value="2">
+          <span class="hint">0.1 to 15 orbits.</span></div>
+        <div class="field"><label for="step">Step (seconds)</label>
+          <input type="number" id="step" min="5" max="600" step="any" value="60">
+          <span class="hint">Time between plotted points.</span></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Plot track</button>
+        <button type="button" id="now">Start now</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="summary"></div>
+      <div id="map" class="map gt-gap" role="region" aria-label="Map of the ground track"></div>
+      <p class="small muted">The ring marks the point beneath the satellite at the start time. Times in your chosen zone (the Time button).</p>
+      <h3>Track points</h3>
+      <div class="scroll" id="pointWrap"><div id="points"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves the element set to each time, giving the satellite's
+      position in the TEME frame (an inertial frame tied to the Earth's equator, which does not turn with the Earth).
+      That position is turned into Earth-fixed coordinates by rotating it through the <em>Greenwich mean sidereal
+      time</em> (GMST, how far the Earth has turned against the stars):</p>
+    <p class="formula">GMST (s) = 67310.54841 + (876600 h + 8640184.812866 s) T + 0.093104 T² − 6.2×10⁻⁶ T³</p>
+    <p>with T the Julian centuries since 1 January 2000, 12:00. The Earth-fixed position is then turned into
+      geodetic latitude, longitude and height above the WGS 84 ellipsoid by iteration. Where two neighbouring points
+      lie either side of the 180° meridian, the line is ended at the meridian and restarted on the other side, so the
+      map does not draw it the long way round. "Westward shift per orbit" is the Earth's turn during one period
+      (360.9856° a day times the period); the drift of the orbit's plane is left out of that figure but not out of
+      the track.</p>
+    <p><strong>Limits.</strong> SGP4 positions drift from the truth as the time moves away from the element set's
+      epoch: typically about a kilometre at the epoch and growing by one to a few kilometres a day for low orbits (a
+      rough guide). UTC stands in for UT1 (under 0.9 s difference, under 0.5 km on the ground) and polar motion is
+      ignored. The lines between points are straight on the flat map; a short step keeps them close to the true
+      curve. Map tiles come from OpenStreetMap (tile.openstreetmap.org); no other network service is used.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      section 3.5 (sidereal time) and Algorithm 12 (geodetic coordinates); Vallado et al., "Revisiting
+      Spacetrack Report #3", AIAA 2006-6753 (TEME). Test: <code>tests/ground-track.test.js</code> (Vallado Example
+      3-5: GMST 152.578787810° at 12:14 UT1 on 20 August 1992; Example 3-3: 34.352496° N, 46.4464° E, 5,085.22 km;
+      a 90-minute orbit moves 22.5616° west each revolution; a segment from 170° E to 170° W splits at 180°).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

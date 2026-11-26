@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Screenshot · Dead Drop Toolbox</title>
+<meta name="description" content="Save a map view as a PNG or JPEG image with a title, notes, labelled markers, a scale bar and the map credit.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="map-screenshot.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="../lib/map-screenshot.js"></script>
+<script src="map-screenshot.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping</p>
+  <h1>Map Screenshot</h1>
+  <p class="lede">Saves the map view as an image file for a report or briefing. The image carries a title and notes
+    above the map, any labelled markers you place, and below it a <em>scale bar</em> (a line of known ground length),
+    the centre position, the capture time in UTC and the map credit.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>View</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" step="any" value="38.0"></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" step="any" value="-77.0"></div>
+      </div>
+      <div class="field"><label for="zoom">Zoom (0 to 19)</label>
+        <input type="number" id="zoom" min="0" max="19" step="1" value="8">
+        <span class="hint">Decimal degrees, north and east positive. Each zoom step halves the ground shown. Panning or zooming the map updates these boxes.</span></div>
+      <div class="actions"><button type="submit">Go to this view</button></div>
+
+      <h2 class="ms-gap">Annotation</h2>
+      <div class="field"><label for="title">Title</label>
+        <input type="text" id="title" maxlength="120" placeholder="Printed above the map"></div>
+      <div class="field"><label for="desc">Notes</label>
+        <textarea id="desc" maxlength="600" placeholder="Printed under the title"></textarea></div>
+      <div class="field"><label for="markerLabel">Marker label</label>
+        <input type="text" id="markerLabel" maxlength="60" placeholder="Shown beside the marker"></div>
+      <div class="actions"><button type="button" id="addMarker">Add marker at the map centre</button>
+        <button type="button" id="clearMarkers">Remove markers</button></div>
+
+      <h2 class="ms-gap">Image</h2>
+      <div class="row2">
+        <div class="field"><label for="format">Format</label>
+          <select id="format"><option value="png">PNG (sharp lines and text)</option><option value="jpeg">JPEG (smaller file)</option></select></div>
+        <div class="field"><label for="scale">Resolution</label>
+          <select id="scale"><option value="1">1× (as on screen)</option><option value="2">2× (for print)</option></select></div>
+      </div>
+      <div class="field"><label for="units">Scale bar units</label>
+        <select id="units"><option value="metric">Metres and kilometres</option><option value="imperial">Feet and miles</option><option value="none">No scale bar</option></select></div>
+      <div class="actions"><button class="primary" type="button" id="capture">Save image</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map ms-map" role="region" aria-label="Map to capture"></div>
+      <h2 class="ms-gap">Scale of this view</h2>
+      <div class="results" id="results"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The map uses OpenStreetMap's 256-pixel tiles on the <em>Web Mercator</em> projection (the square world map most
+      web maps use). One screen pixel covers this much ground along the parallel at latitude φ and zoom z:</p>
+    <p class="formula">metres per pixel = 156,543.03392 × cos φ / 2<sup>z</sup></p>
+    <p>where 156,543.03392 m is the Earth's equator (2π × 6,378,137 m, the WGS 84 equatorial radius) spread over one
+      256-pixel tile at zoom 0. The scale bar is the longest round length (1, 2 or 5 times a power of ten) that fits in
+      200 screen pixels at the latitude of the map centre. The <em>scale ratio</em> (1:N) assumes the CSS reference
+      pixel of 1/96 inch; a printed copy has whatever scale its print size gives it.</p>
+    <p><strong>Limits.</strong> Web Mercator stretches the map by 1 / cos φ, so the ground scale is only right near
+      the centre latitude: the results show it at the top and bottom of the view and how much it changes. At zoom 4 or
+      less a scale bar can be badly wrong at the edges; the image then still carries one, so read it at the centre
+      only. The capture is a copy of the page made by the html2canvas library (1.4.1), not a print-quality render, and
+      a marker label or tile edge can shift by a pixel. Map tiles come from OpenStreetMap (tile.openstreetmap.org),
+      which lets pages copy its tiles into an image; tiles from a server that does not send that permission (a CORS
+      header) would block the capture. Nothing else is fetched, the image is made in your browser, and your inputs
+      are kept only in this browser.</p>
+    <p class="small muted">Reference: OpenStreetMap wiki, "Zoom levels" (metres per pixel); W3C, <em>CSS Values and
+      Units</em>, absolute lengths (1 px = 1/96 in). Test: <code>tests/map-screenshot.test.js</code> (latitude 38°,
+      zoom 8: 481.87 m per pixel; equator, zoom 18: 0.5972 m).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only request it makes is for OpenStreetMap map tiles.</div></footer>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite Pass Predictor · Dead Drop Toolbox</title>
+<meta name="description" content="When a satellite next rises over a place, how high it gets, when it sets, and which passes could be seen with the eye.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/satellite-visibility.js"></script>
+<script src="../lib/satellite-passes.js"></script>
+<script src="satellite-pass-predictor.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>Satellite Pass Predictor</h1>
+  <p class="lede">Lists a satellite's <em>passes</em> over a place: each time it rises above the horizon, climbs to
+    its highest <em>elevation</em> (angle above the horizon), and sets again, with the compass directions. It also
+    marks which passes could be seen with the eye: the satellite in sunlight while your sky is dark.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set (TLE)</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2. Get a current one with the <a href="tle-analyzer.html">TLE Analyzer</a>.</span></div>
+      <div class="field"><label for="site">Place</label>
+        <select id="site"><option value="">Enter below</option></select></div>
+      <div class="row3">
+        <div class="field"><label for="lat">Latitude (°)</label><input type="number" id="lat" step="any" value="40.71"></div>
+        <div class="field"><label for="lon">Longitude (°)</label><input type="number" id="lon" step="any" value="-74.01"></div>
+        <div class="field"><label for="height">Height (m)</label><input type="number" id="height" step="any" value="0"></div>
+      </div>
+      <p class="small muted">North and east positive.</p>
+      <div class="row2">
+        <div class="field"><label for="start">Start (UTC)</label><input type="datetime-local" id="start" step="1"></div>
+        <div class="field"><label for="days">Period</label>
+          <select id="days"><option value="1">1 day</option><option value="3">3 days</option>
+            <option value="7" selected>7 days</option><option value="14">14 days</option></select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="mask">Horizon mask (°)</label><input type="number" id="mask" step="any" min="0" max="45" value="0">
+          <span class="hint">Rise and set are counted at this elevation. Raise it for hills or buildings.</span></div>
+        <div class="field"><label for="minPeak">Lowest peak to list (°)</label><input type="number" id="minPeak" step="any" min="0" max="90" value="10">
+          <span class="hint">Passes that never get this high are left out.</span></div>
+      </div>
+      <label class="check"><input type="checkbox" id="eyeOnly"> List only passes that can be seen with the eye</label>
+      <div class="actions"><button class="primary" type="submit">Find passes</button>
+        <button type="button" id="now">Start now</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <div class="results" id="summary"></div>
+      <h3>Passes</h3>
+      <div class="scroll" id="passWrap"><div id="passes"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+      <p class="small muted">Times in your chosen zone (the Time button). "Seen by eye" gives the part of the pass
+        when the satellite is sunlit and the Sun is at least 6° below your horizon.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves the element set through the period, and each moment's
+      position is turned into azimuth and elevation from your place on the WGS 84 ellipsoid (as in the Satellite
+      Visibility Calculator). The search steps every 30 seconds. Where the elevation crosses the horizon mask between
+      two steps, it halves the interval until the crossing is known to half a second; the highest point is then
+      refined by a golden-section search around the highest step. A pass that pokes above the mask for less than one
+      step can be missed, but such a pass only grazes the mask.</p>
+    <p>"Seen by eye" checks every 30 seconds of the pass: the satellite out of the Earth's umbra (full shadow, by a
+      conical shadow model) and the Sun 6° or more below your horizon. That is a common rule, not a brightness model:
+      small satellites can meet it and still be too faint to see. Refraction near the horizon is not applied.</p>
+    <p>SGP4's error grows with time from the element set's epoch, typically one to a few kilometres a day for low
+      orbits (a rough guide). A low satellite covers about 7.5 km a second, so each 7.5 km of error along its track
+      moves rise and set by about a second, and passes a week or two ahead can shift by tens of seconds or more. Use a
+      fresh element set.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      sections 4.4 (look angles) and 11.4 (rise and set by root bracketing); Montenbruck and Pfleger, <em>Astronomy on
+      the Personal Computer</em>, section 3.3. Test: <code>tests/satellite-passes.test.js</code> (a made-up sine-shaped
+      elevation that rises at 500 s and sets at 2500 s, and a circular equatorial orbit 500 km up whose overhead pass
+      lasts 742.2 s).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

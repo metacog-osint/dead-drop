@@ -1,0 +1,3 @@
+/* Ground Station Frequency Map: spacing between blocks and the "Show all" state of the station list. */
+.gs-gap { margin-top: 14px; }
+.scroll.all { max-height: none; }

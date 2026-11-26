@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TLE Analyzer · Dead Drop Toolbox</title>
+<meta name="description" content="Reads a satellite's two-line element set field by field, checks it, and works out the orbit's period, size and height. Can look up current element sets from CelesTrak.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/satellite-visibility.js"></script>
+<script src="tle-analyzer.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space</p>
+  <h1>TLE Analyzer</h1>
+  <p class="lede">A <em>two-line element set</em> (TLE) is the standard short text that describes a satellite's
+    orbit at one moment, its <em>epoch</em>. This tool reads one field by field, checks its checksums, and works out
+    the orbit's period, size and lowest and highest points. It can also fetch a current element set from CelesTrak
+    and show where the satellite is now.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="tle">Element set</label>
+        <textarea id="tle" rows="4" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">An optional name line, then line 1 and line 2, exactly as published (69 characters each).</span></div>
+      <div class="field" id="pickField" hidden><label for="pick">Element set to show</label>
+        <select id="pick"></select>
+        <span class="hint">The text holds more than one element set.</span></div>
+      <div class="actions"><button class="primary" type="submit">Analyze</button>
+        <button type="button" id="example">Example</button>
+        <button type="button" id="clear">Clear</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+      <h2>Look up at CelesTrak</h2>
+      <div class="row2">
+        <div class="field"><label for="by">Search by</label>
+          <select id="by"><option value="CATNR">Catalog number</option><option value="NAME">Name</option></select></div>
+        <div class="field"><label for="query">Catalog number or name</label>
+          <input type="text" id="query" autocomplete="off" placeholder="25544"></div>
+      </div>
+      <div class="actions"><button type="button" id="fetch">Fetch from CelesTrak</button>
+        <button type="button" class="preset" data-catnr="25544">ISS</button>
+        <button type="button" class="preset" data-catnr="20580">Hubble</button>
+        <button type="button" class="preset" data-catnr="48274">Tiangong (Tianhe)</button></div>
+      <p class="small muted">One request each time you press a button; nothing refreshes on its own. A name search
+        matches every satellite whose name contains the text.</p>
+      <p class="msg" id="fetchMsg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="msg" id="warn" hidden></p>
+      <h3>Identity and epoch</h3>
+      <div class="results" id="resId"></div>
+      <h3>Orbital elements as published</h3>
+      <div class="results" id="resEl"></div>
+      <h3>Orbit size and shape</h3>
+      <div class="results" id="resOrbit"></div>
+      <h3>Where it is now</h3>
+      <div class="results" id="resNow"></div>
+      <p class="small muted" id="nowNote"></p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The fields are read from fixed columns as CelesTrak's format notes and Spacetrack Report No. 3 set them out.
+      Eccentricity and the two exponent fields carry an implied leading decimal point (<span class="mono">-11606-4</span>
+      is −0.11606 × 10<sup>−4</sup>). The two-digit epoch year means 1957–1999 for 57–99 and 2000–2056 for 00–56; the
+      epoch day counts from 1.0 at 00:00 UTC on 1 January. Catalog numbers above 99999 use the Alpha-5 form, a letter
+      for the first digit (A = 10, I and O skipped). The checksum in column 69 is the sum of the digits in
+      columns 1–68, counting each minus sign as 1, modulo 10; a mismatch usually means a mistyped character.</p>
+    <p>The <em>mean motion</em> n (revolutions per day) gives the period, 1440 / n minutes, and by Kepler's third
+      law the <em>semi-major axis</em> a (half the long axis of the orbit's ellipse):</p>
+    <p class="formula">a = (μ / n²)<sup>1/3</sup>, n in rad/s, μ = 398600.4418 km³/s² &nbsp;&nbsp; perigee = a(1 − e) − 6378.137 km &nbsp;&nbsp; apogee = a(1 + e) − 6378.137 km</p>
+    <p><em>Perigee</em> and <em>apogee</em> are the lowest and highest points of the orbit, here measured above the
+      Earth's equatorial radius, not above the ground below. A TLE's mean motion is an SGP4 mean value, not an
+      osculating (instantaneous) one, so these heights are good to a few kilometres and the satellite's actual height
+      wanders around them.</p>
+    <p>"Where it is now" runs the SGP4 model (satellite.js 5.0.0, MIT licence) from the element set to the moment you
+      pressed Analyze. SGP4 gives the position in the <em>TEME</em> frame (true equator, mean equinox), an
+      Earth-centred frame that does not turn with the Earth; it is turned to the Earth-fixed frame through Greenwich
+      mean sidereal time (IAU-82) to give the point below the satellite and its height above the WGS 84 ellipsoid.
+      SGP4's error is about a kilometre at the epoch and grows with time from it, typically by one to a few
+      kilometres a day for low orbits (a rough guide; it depends on the orbit and on solar activity), so the warning
+      after 7 days is a rule of thumb, not a precise limit. The classification letter is U for unclassified
+      in every public element set.</p>
+    <p>Network: the only request this page makes with what you type is a CelesTrak lookup you start
+      (<span class="mono">celestrak.org/NORAD/elements/gp.php</span>). CelesTrak updates its element sets about every
+      two hours and asks users not to fetch the same data more often, so the page asks once per lookup, never on a
+      timer, and reuses an answer to the same query for two hours while the page is open. CelesTrak redistributes
+      element sets published by the US Space Force on Space-Track.org.</p>
+    <p class="small muted">References: CelesTrak, "NORAD Two-Line Element Set Format"; Hoots and Roehrich, Spacetrack
+      Report No. 3 (1980); Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., sections 2.2–2.3
+      and 3.5. Test: <code>tests/tle-analyzer.test.js</code> (the ISS example set: epoch 20 Sep 2008 12:25:40 UTC,
+      period 91.60 min, perigee 348.3 km, apogee 357.3 km; Vanguard 1, 00005: a = 8632.5 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only thing sent anywhere is a CelesTrak lookup you start.</div></footer>
+</body>
+</html>

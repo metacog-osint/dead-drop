@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coordinate Converter · Dead Drop Toolbox</title>
+<meta name="description" content="Convert latitude and longitude between decimal degrees, degrees-minutes-seconds and degrees-decimal-minutes, and to UTM and MGRS grid references.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mgrs@1.0.0/dist/mgrs.min.js"></script>
+<script src="../lib/coordinate-converter.js"></script>
+<script src="coordinate-converter.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping</p>
+  <h1>Coordinate Converter</h1>
+  <p class="lede">Writes one position in the common forms: <em>decimal degrees</em> (DD, such as 28.5721),
+    <em>degrees, minutes and seconds</em> (DMS, 28° 34′ 19.56″), <em>degrees and decimal minutes</em> (DDM,
+    28° 34.3260′), the <em>UTM</em> grid (Universal Transverse Mercator: a zone number and metres east and north) and
+    the military grid reference (<em>MGRS</em>, which names UTM's 100 km squares with letters). Type latitude and
+    longitude in any of the first three forms, or paste an MGRS reference.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="place">Known place</label><select id="place"></select></div>
+      <div class="field"><label for="lat">Latitude</label>
+        <input type="text" id="lat" value="28.6084" autocomplete="off" spellcheck="false">
+        <span class="hint">For example 28.6084, -33.8599, 28 36 30.2 N, 28°36'30.2"N or N 28 36.504.</span></div>
+      <div class="field"><label for="lon">Longitude</label>
+        <input type="text" id="lon" value="-80.6043" autocomplete="off" spellcheck="false">
+        <span class="hint">Minus or W for west, E for east.</span></div>
+      <div class="actions"><button class="primary" type="submit">Convert</button></div>
+      <h3>Or from an MGRS reference</h3>
+      <div class="field"><label for="mgrsIn">MGRS reference</label>
+        <input type="text" id="mgrsIn" placeholder="17RNM 34327 60629" autocomplete="off" spellcheck="false">
+        <span class="hint">Spaces are optional. The position used is the centre of the square the reference names.</span></div>
+      <div class="actions"><button type="button" id="fromMgrs">Convert from MGRS</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <p class="small muted" id="note" hidden></p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Degrees, minutes, seconds.</strong> One degree is 60 minutes and one minute 60 seconds. The value is
+      rounded once, in its smallest shown unit, before it is split, so a value just under a whole minute carries
+      over (59.999″ shown to two places becomes the next minute, never "60.00″"). Shown precision: DD to 0.000001°,
+      DMS to 0.01″ and DDM to 0.0001′, each about 0.1 to 0.3 m on the ground.</p>
+    <p><strong>UTM.</strong> The transverse Mercator series in Snyder's <em>Map Projections: A Working Manual</em>
+      on the WGS 84 ellipsoid (a = 6,378,137 m, flattening 1/298.257223563), with the UTM conventions: 6° zones,
+      scale 0.9996 on the zone's central meridian, 500,000 m added to eastings and 10,000,000 m to northings south of
+      the equator, and the wider zone 32V over south-west Norway and zones 31X to 37X over Svalbard. The latitude
+      band letter is the MGRS band (C to X in 8° steps from 80° S). UTM is defined from 80° S to 84° N; nearer the
+      poles the polar grid (UPS) is used, which this page does not give. UTM eastings and northings are shown
+      rounded to the nearest metre. The <em>grid scale factor</em> is how much the grid stretches distances at the
+      point (0.9996 on the central meridian, a little over 1 near the zone edges).</p>
+    <p><strong>MGRS.</strong> Built from the UTM position: zone and band, two letters for the 100 km square
+      (columns lettered A–H, J–R or S–Z depending on the zone; rows A–V, skipping I and O, repeating every 2,000 km
+      and starting at F in even-numbered zones), then the metres east and north within that square, shown to 1 m
+      (five digits each way). The digits are cut off, not rounded, so the reference names the square the point is
+      in. An MGRS reference names a square, not a point: a ten-digit reference is a 1 m square, an eight-digit one a
+      10 m square, and so on. Reading an MGRS reference back uses the open-source mgrs library (version 1.0.0,
+      loaded from cdn.jsdelivr.net), which gives the centre of the square.</p>
+    <p><strong>Limits.</strong> Datum: everything is WGS 84. A position taken from an old paper map on another datum
+      can be off by tens to hundreds of metres. No network service is used apart from loading the mgrs library.</p>
+    <p class="small muted">References: J. P. Snyder, <em>Map Projections: A Working Manual</em>, USGS Professional
+      Paper 1395 (1987), pp. 60–64; NGA (formerly DMA) TM 8358.1 and 8358.2 (UTM and MGRS). Test:
+      <code>tests/coordinate-converter.test.js</code> (Snyder's example: 40° 30′ N, 73° 30′ W on Clarke 1866 gives
+      x = 127,106.5 m, y = 4,484,124.4 m; 10° 59′ 59.99999″ N is shown as 11° 00′ 00.00″ N; 45° N, 15° E is
+      33T WK 00000 82950).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

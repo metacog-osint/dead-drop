@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Satellite Tracker · Dead Drop Toolbox</title>
+<meta name="description" content="Shows where several satellites are now on a map, with the ground track each has just flown and is about to fly, updated every few seconds.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="multi-satellite-tracker.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@5.0.0/dist/satellite.min.js"></script>
+<script src="../lib/tle-analyzer.js"></script>
+<script src="../lib/ground-track.js"></script>
+<script src="../lib/multi-satellite.js"></script>
+<script src="multi-satellite-tracker.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Geography and mapping</p>
+  <h1>Multi-Satellite Tracker</h1>
+  <p class="lede">Shows where several satellites are right now, as the point on the ground directly beneath each
+    one, with the <em>ground track</em> (that point's path) it has just flown and is about to fly. Positions are
+    worked out in your browser from each satellite's element set and move every five seconds.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Add satellites</h2>
+      <div class="field"><label for="tle">Element sets (TLE)</label>
+        <textarea id="tle" rows="5" spellcheck="false" autocomplete="off"></textarea>
+        <span class="hint">One or more sets, each an optional name line then line 1 and line 2.</span></div>
+      <div class="actions"><button class="primary" type="submit">Add pasted sets</button></div>
+      <div class="field mst-gap"><label for="catnr">Look up on CelesTrak by catalog number</label>
+        <input type="text" id="catnr" inputmode="numeric" autocomplete="off" placeholder="25544">
+        <span class="hint">The five-digit (or longer) catalog number, also called the NORAD ID.</span></div>
+      <div class="actions" id="presets"><button type="button" id="lookup">Look up</button></div>
+      <p class="msg" id="fetchMsg" hidden></p>
+      <h2 class="mst-gap">Trails</h2>
+      <div class="row2">
+        <div class="field"><label for="back">Behind (minutes)</label><input type="number" id="back" min="0" max="180" step="any" value="60"></div>
+        <div class="field"><label for="ahead">Ahead (minutes)</label><input type="number" id="ahead" min="0" max="180" step="any" value="30"></div>
+      </div>
+      <span class="hint small muted">The track behind is a solid line, the track ahead dashed; 0 turns one off.</span>
+      <div class="actions"><button type="button" id="pause" aria-pressed="false">Pause updates</button>
+        <button type="button" id="clear">Remove all</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the tracked satellites"></div>
+      <p class="small muted" id="updated"></p>
+      <p class="msg" id="warn" hidden></p>
+      <h2>Tracked satellites</h2>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The SGP4 model (satellite.js 5.0.0, MIT licence) moves each element set to the current time, giving the
+      satellite's position in the TEME frame (an inertial frame tied to the Earth's equator). That position is turned
+      through the Greenwich mean sidereal time (how far the Earth has turned) into Earth-fixed coordinates and then
+      into latitude, longitude and height above the WGS 84 ellipsoid, as in the Ground Track Plotter. Trails are
+      sampled once a minute and split where they cross the 180° meridian. <em>Ground speed</em> is how fast the point
+      beneath the satellite moves over the surface (a sphere of 6,371 km); <em>speed</em> in the copied results is the
+      satellite's own speed in the inertial frame, which is higher.</p>
+    <p><strong>Limits.</strong> An element set ages: SGP4 positions are typically within about a kilometre at the
+      element set's epoch and drift by one to a few kilometres a day for low orbits (a rough guide), more for objects
+      low enough to feel the atmosphere strongly. The table gives each set's age and marks those over 7 days old. A
+      satellite that manoeuvres after its epoch will not be where the element set says. UTC stands in for UT1.</p>
+    <p><strong>Network.</strong> Map tiles come from OpenStreetMap (tile.openstreetmap.org). A lookup asks CelesTrak
+      (celestrak.org, its public GP data) for the newest element set for that catalog number, only when you press a
+      lookup button; answers are reused for two hours, which is about how often CelesTrak updates. The tracked list is
+      kept only in this browser.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed.,
+      section 3.5 and Algorithm 12; Chris Veness, "Calculate distance, bearing and more between latitude/longitude points",
+      movable-type.co.uk (haversine). Test: <code>tests/multi-satellite.test.js</code> (a made-up 90-minute equatorial
+      orbit 7,000 km from the Earth's centre: ground speed 6.948 km/s, its past hour's trail split once at 180°;
+      Veness's Land's End to John o' Groats, 968.9 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere. Lookups send only the catalog number to CelesTrak.</div></footer>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doppler Shift Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Frequency shift of a radio signal from a moving transmitter, and the largest shift a satellite in a circular orbit can show a ground station.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/doppler-shift.js"></script>
+<script src="doppler-shift-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">RF and comms · Orbits and space</p>
+  <h1>Doppler Shift Calculator</h1>
+  <p class="lede">When a transmitter moves toward you its signal arrives slightly higher in frequency, and when it
+    moves away, slightly lower. This works out that shift from the speed along the line between you and the
+    transmitter, and, for a satellite in a circular orbit, the largest shift a ground station can see during a pass.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="freq">Transmitted frequency (MHz)</label>
+        <input type="number" id="freq" step="any" min="0" value="137.5"></div>
+      <h2>Known motion</h2>
+      <div class="field"><label for="speed">Speed relative to you (km/s)</label>
+        <input type="number" id="speed" step="any" min="0" value="7.5">
+        <span class="hint">The transmitter's speed measured from where you are, not its orbital speed: a geostationary
+          satellite moves at 3.07 km/s in orbit but stays almost still over the ground.</span></div>
+      <div class="field"><label for="angle">Angle from the line of sight (degrees)</label>
+        <input type="number" id="angle" min="-180" max="180" step="any" value="0">
+        <span class="hint">The angle between the direction it moves and the line from it to you: 0 heads straight at
+          you, 90 crosses your line of sight, 180 heads straight away.</span></div>
+      <h2>Circular orbit (optional)</h2>
+      <div class="field"><label for="altitude">Orbit altitude (km)</label>
+        <input type="number" id="altitude" step="any" min="0" value="550">
+        <span class="hint">Leave empty to skip. Low Earth orbit is about 300 to 2,000 km.</span></div>
+      <div class="row2">
+        <div class="field"><label for="elevation">Elevation (degrees)</label>
+          <input type="number" id="elevation" min="0" max="90" step="any" value="10">
+          <span class="hint">How high above your horizon, for an overhead pass.</span></div>
+        <div class="field"><label for="latitude">Your latitude (degrees)</label>
+          <input type="number" id="latitude" min="-90" max="90" step="any" value="0">
+          <span class="hint">0 gives the widest bound.</span></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results: known motion</h2>
+      <div class="results" id="results"></div>
+      <h2>Results: circular orbit</h2>
+      <div class="results" id="orbit"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The <em>range rate</em> is how fast the distance between transmitter and receiver changes, positive when it
+      grows. With speed v at angle α from the line of sight, range rate = −v cos α, and the shift is</p>
+    <p class="formula">Δf = −f × (range rate) / c</p>
+    <p>so an approaching transmitter (negative range rate) is received high. During a satellite pass the received
+      frequency therefore starts high, passes through the transmitted frequency at closest approach, and ends low:
+      tune downward as the pass goes on. This is the first-order formula; the relativistic correction is less than one
+      part in a billion at orbital speeds.</p>
+    <p>For a circular orbit of radius r = R + altitude, the orbital speed is v = √(μ/r). On a pass straight overhead,
+      the share of that speed along your line of sight is v sin η, where η, the angle at the satellite between you and
+      straight down, satisfies sin η = (R / r) cos(elevation). It is largest at the horizon, v R / r, and zero overhead.
+      The Earth's rotation carries you at up to 0.465 km/s (at the equator; times the cosine of your latitude
+      elsewhere), so no pass can show a line-of-sight speed above v R / r + ω<sub>E</sub> R cos(latitude). The tool
+      gives that bound; the true peak for a given pass lies below it.</p>
+    <p><strong>Limits.</strong> Spherical, non-rotating Earth for the overhead-pass figures, with the rotation
+      allowance added only to the bound. For an exact shift curve over a real pass, compute the range rate from the
+      satellite's orbital elements. For high orbits the overhead-pass figures mean little: a geostationary satellite's
+      shift comes from its small daily drift, not from v R / r. Constants: c = 299,792.458 km/s, μ = 398,600.4418
+      km³/s² and ω<sub>E</sub> = 7.292115 × 10⁻⁵ rad/s (WGS 84), R = 6,371 km.</p>
+    <p class="small muted">References: Rappaport, <em>Wireless Communications</em>, 2nd ed., section 5.2.1; Vallado,
+      <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., chapter 4 (range rate); Curtis, <em>Orbital
+      Mechanics for Engineering Students</em>, section 2.6; Wertz and Larson, <em>Space Mission Analysis and
+      Design</em>, 3rd ed., section 5.2. Test: <code>tests/doppler-shift.test.js</code> (137.5 MHz at 7.5 km/s head-on
+      gives +3,439.88 Hz; a 550 km orbit gives at most 10,194.8 Hz at 437.5 MHz over a non-rotating Earth).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

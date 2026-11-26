@@ -1,0 +1,9 @@
+/* Launch Weather Dashboard: screening result colours, alert text, small gaps. */
+.lwd-gap { margin-top: 12px; }
+.lwd-ok { color: var(--ok); font-weight: 600; }
+.lwd-watch { color: var(--warn); font-weight: 600; }
+.lwd-over { color: var(--alarm); font-weight: 600; }
+.lwd-none { color: var(--muted); }
+.lwd-alert pre { white-space: pre-wrap; font-size: 12.5px; margin: 6px 0 0; }
+.scroll.all { max-height: none; }
+table.data td button { font-size: 13px; padding: 2px 8px; }

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Viewshed Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="Whether an observer can see each of a set of targets over the terrain between them, allowing for the Earth's curvature and refraction.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="viewshed-calculator.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/viewshed.js"></script>
+<script src="viewshed-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geospatial · RF and comms</p>
+  <h1>Viewshed Calculator</h1>
+  <p class="lede">Whether an observer, a camera or an antenna can see each of a set of target points: the page fetches
+    the ground height at evenly spaced points along each line, lowers each point for the curve of the Earth, and checks
+    that the straight sight line clears every one. For a blocked target it says where the ground gets in the way and
+    how much higher the target would need to be.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Observer</h2>
+      <div class="row3">
+        <div class="field"><label for="obsLat">Latitude</label><input type="number" id="obsLat" step="any" value="38.8895"></div>
+        <div class="field"><label for="obsLon">Longitude</label><input type="number" id="obsLon" step="any" value="-77.0353"></div>
+        <div class="field"><label for="obsH">Height above ground (m)</label><input type="number" id="obsH" step="any" min="0" value="2"></div>
+      </div>
+      <span class="hint">Degrees, north and east positive. 1.7 m for a standing person's eyes.</span>
+      <h2>Targets</h2>
+      <div class="row3">
+        <div class="field"><label for="tgtLat">Latitude</label><input type="number" id="tgtLat" step="any" value="38.9072"></div>
+        <div class="field"><label for="tgtLon">Longitude</label><input type="number" id="tgtLon" step="any" value="-77.0369"></div>
+        <div class="field"><label for="tgtH">Height above ground (m)</label><input type="number" id="tgtH" step="any" min="0" value="10"></div>
+      </div>
+      <div class="actions"><button type="button" id="add">Add target</button>
+        <button type="button" id="pick">Pick targets on the map</button>
+        <button type="button" id="clearTargets">Remove all targets</button></div>
+      <h2>Settings</h2>
+      <div class="field"><label for="k">Refraction</label>
+        <select id="k">
+          <option value="1.3333333333333333">Radio, 4/3 Earth (k = 1.33)</option>
+          <option value="1.1666666666666667">Light by day, about 7/6 Earth (k = 1.17)</option>
+          <option value="1">None, geometric Earth (k = 1)</option>
+        </select>
+        <span class="hint">Air bends a line of sight slightly downward, so it reaches a little past the geometric horizon. The model treats this as a larger Earth, k times its radius.</span></div>
+      <div class="row2">
+        <div class="field"><label for="samples">Sample points per line</label>
+          <input type="number" id="samples" min="10" max="200" step="1" value="100">
+          <span class="hint">10 to 200. More points catch narrower ridges.</span></div>
+        <div class="field"><label for="maxKm">Longest line (km)</label>
+          <input type="number" id="maxKm" min="0.1" max="200" step="any" value="50">
+          <span class="hint">Targets farther away are not sent for.</span></div>
+      </div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <div id="map" class="map vs-gap" aria-label="Map of the observer and targets"></div>
+      <div class="scroll" id="table"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+      <div class="field vs-gap" id="profileRow" hidden><label for="profileSel">Ground profile for</label>
+        <select id="profileSel"></select></div>
+      <div id="profile"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>For each target the page takes evenly spaced points along the great circle (the shortest path over the
+      Earth's surface) from the observer, and asks the Open-Elevation service for the ground height at each. Each
+      point's height is lowered by the curvature drop, d² / (2 k R), where d is its distance from the observer, R is
+      the Earth's mean radius (6,371 km) and k is the refraction factor. The eye is the observer's ground plus the
+      observer's height, and the target top is its ground plus its height, lowered the same way. The target is visible
+      when the straight line between them passes at or above every point in between.</p>
+    <p class="formula">drop = d² / (2 k R) &nbsp;&nbsp; horizon distance = √(2 k R h)</p>
+    <p>k = 4/3 is the standard figure for radio waves in an average atmosphere (ITU-R Recommendations P.453 and
+      P.834); it puts the horizon for an eye 2 m up at 5.8 km. For visible light the surveyors' refraction coefficient
+      of about 0.13 gives k of about 7/6. Near the ground both vary widely with the weather, and on a cold, still
+      morning a line can bend far more, so a marginal result, within a few metres, can go either way.</p>
+    <p>Limits:</p>
+    <ul>
+      <li>The ground model has gaps between samples: a ridge or building narrower than the spacing (shown with each
+        result) can be missed. Open-Elevation serves a public digital elevation model built from the SRTM survey;
+        its resolution, and whether a point's height includes trees and buildings, depend on the data the service
+        holds and are not checked here. Treat the result as a first look, not a survey.</li>
+      <li>This is geometric line of sight. It does not include the Fresnel zone (the region around a radio path that
+        must also be clear for full signal), haze, or how small the target looks at that range.</li>
+      <li>Heights are taken as above the same datum as the elevation model (for SRTM, mean sea level, EGM96).</li>
+    </ul>
+    <p>Services used: Open-Elevation (<span class="mono">api.open-elevation.com</span>), a free public service, for the
+      ground heights: the page sends it the latitude and longitude of every sample point, and nothing else. If it does
+      not answer, the page says so and calculates nothing. Map tiles come from OpenStreetMap.</p>
+    <p class="small muted">References: ITU-R P.453 and P.834 (effective Earth radius, k = 4/3), as used for path
+      profiles in ITU-R P.452 and P.526; Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points" (movable-type.co.uk) for the great-circle path. Test: <code>tests/viewshed.test.js</code> (synthetic
+      terrain: a 2 m eye over a smooth Earth sees to 5,829 m; a 10 m ridge 5 km out, with 4/3 Earth, leaves the sight
+      line 9.47 m short and the target needing 18.94 m more height).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. The page sends only the sample points' coordinates to Open-Elevation; nothing else you type leaves your browser.</div></footer>
+</body>
+</html>

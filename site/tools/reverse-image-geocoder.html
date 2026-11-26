@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reverse Image Geocoder · Dead Drop Toolbox</title>
+<meta name="description" content="Put a photo on the map from the GPS position in its EXIF metadata, read in your browser. The photo is never uploaded.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="reverse-image-geocoder.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+<script src="../lib/image-metadata.js"></script>
+<script src="../lib/image-geocode.js"></script>
+<script src="reverse-image-geocoder.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Imagery and files · Geography and mapping</p>
+  <h1>Reverse Image Geocoder</h1>
+  <p class="lede">Puts a photo on the map from the GPS position its camera or phone wrote into the file's
+    <em>EXIF</em> metadata, with the direction the camera faced when that was recorded. It reads coordinates only; it
+    does not look up a street address. The photo is read in this browser and is never uploaded.</p>
+  <div class="tool">
+    <form class="panel rig-drop" id="form" novalidate>
+      <div class="field"><label for="file">Photo (JPEG)</label>
+        <input type="file" id="file" accept="image/jpeg,.jpg,.jpeg,image/*">
+        <span class="hint">Choose a file or drop one on this panel. EXIF is read from JPEG files only.</span></div>
+      <img id="preview" class="rig-preview" alt="The chosen photo" hidden>
+      <div class="results" id="results"></div>
+      <div class="small" id="notes"></div>
+      <div class="actions">
+        <button type="button" id="copyCoords">Copy coordinates</button>
+        <button type="button" id="copy">Copy results as JSON</button>
+      </div>
+      <p class="msg" id="msg" hidden></p>
+      <h2 class="rig-gap">Search for the photo elsewhere</h2>
+      <p class="small">Reverse-image search sites look for other copies of a picture. These are plain links to each
+        site's own upload page: this page sends them nothing. If you upload the photo there, it goes to that company,
+        and the original file carries its GPS position and other metadata with it. To avoid that, make a copy without
+        metadata first (the picture is redrawn in this browser and saved as a new JPEG, slightly recompressed).</p>
+      <ul class="small" id="sites"></ul>
+      <div class="actions"><button type="button" id="strip">Make a copy without metadata</button>
+        <a id="save" class="btn" hidden>Save the copy</a></div>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the photo's recorded position"></div>
+      <p class="small muted">The dot is the recorded position. A line from it shows the camera's direction when the
+        photo records one against true north.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The file is read in the browser and its EXIF block parsed by Exif.js (exif-js 2.3.0, MIT licence). The GPS
+      latitude and longitude are stored as degrees, minutes and seconds with a separate hemisphere letter; decimal
+      degrees = degrees + minutes ÷ 60 + seconds ÷ 3600, negative for south and west. Altitude is negative when the
+      file says below sea level. The GPS time stamp is UTC by definition and is shown in your chosen time zone; the
+      camera's own "taken" time has no time zone and is shown exactly as written.</p>
+    <p>When the photo records the direction the camera faced (<em>GPSImgDirection</em>) against true north, a 300 m
+      line is drawn that way: the end point is the destination point along a great circle,
+      <span class="mono">lat₂ = asin(sin lat₁ cos δ + cos lat₁ sin δ cos θ)</span>, with δ = distance ÷ 6,371 km.
+      A direction against magnetic north is listed but not drawn, because the photo does not record the local
+      magnetic declination (the angle between magnetic and true north).</p>
+    <p><strong>Limits.</strong> Metadata is easy to edit, strip or forge: the position is a lead to check against the
+      picture itself, not proof. A phone's fix can be tens of metres out, more indoors or when the fix was stale. A
+      position of exactly 0, 0, a missing hemisphere letter or a datum other than WGS 84 is flagged. Network use: map
+      tiles from OpenStreetMap (tile.openstreetmap.org), Leaflet from unpkg.com and Exif.js from cdn.jsdelivr.net.
+      The map and search links open other sites only when you follow them; a map link sends that site the
+      coordinates.</p>
+    <p class="small muted">References: CIPA DC-008, <em>Exif Version 2.32</em>, section 4.6.6 (GPS tags); Chris Veness,
+      "Calculate distance, bearing and more between latitude/longitude points", movable-type.co.uk (destination
+      point). Test: <code>tests/image-geocode.test.js</code> (from 53° 19′ 14″ N, 001° 43′ 47″ W on 096° 01′ 18″ for
+      124.8 km: 53° 11′ 18″ N, 000° 08′ 00″ E).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Your photo is read in your browser and never uploaded; the only requests are for map tiles and the two libraries.</div></footer>
+</body>
+</html>

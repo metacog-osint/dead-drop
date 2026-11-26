@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Zone Batch Converter · Dead Drop Toolbox</title>
+<meta name="description" content="Paste many timestamps, one per line, in ISO 8601, Unix time, date-time groups or common written forms, and read each one in UTC and the time zones you choose.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/timezone.js"></script>
+<script src="../lib/timestamp-batch.js"></script>
+<script src="timezone-batch-converter.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Time</p>
+  <h1>Time Zone Batch Converter</h1>
+  <p class="lede">Paste timestamps from a log, a report or a spreadsheet, one per line, and see each one as a single
+    moment in Coordinated Universal Time (UTC) and in the time zones you tick. A line that carries its own zone (Z, UTC
+    or an offset such as -05:00) is read with it; a line without one is read as a clock in the source zone you name.
+    Lines that cannot be read stay in the table with the reason.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="input">Timestamps, one per line</label>
+        <textarea id="input" rows="8" spellcheck="false"></textarea>
+        <span class="hint">Read: 2025-10-26T14:30:00Z, 2025-10-26 14:30 (no zone), 1729952400 (Unix seconds),
+          1729952400000 (milliseconds), 26 Oct 2025 14:30 UTC, Oct 26, 2025 2:30 pm, 26/10/2025 14:30,
+          261430ZOCT25 (date-time group: day, hour, minute, zone letter, month, year).</span></div>
+      <div class="field"><label for="zone">Source zone, for lines with no zone of their own</label>
+        <select id="zone"></select></div>
+      <div class="field" id="otherRow" hidden><label for="other">IANA zone name</label>
+        <input type="text" id="other" placeholder="e.g. Asia/Manila" spellcheck="false" autocomplete="off"></div>
+      <div class="field"><label for="order">Numeric dates such as 03/04/2026</label>
+        <select id="order"><option value="dmy">Day first (3 April 2026)</option><option value="mdy">Month first (4 March 2026, US style)</option></select>
+        <span class="hint">A date that can only be read one way (26/10/2025) is read that way and noted.</span></div>
+      <fieldset><legend>Show in these zones</legend><div class="row2" id="targets"></div></fieldset>
+      <div class="field"><label for="extra">More zones (IANA names, comma-separated)</label>
+        <input type="text" id="extra" placeholder="e.g. Asia/Manila, America/Cayenne" spellcheck="false" autocomplete="off"></div>
+      <div class="actions"><button class="primary" type="submit">Convert</button>
+        <button type="button" id="sample">Sample lines</button>
+        <button type="button" id="clear">Clear</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <div class="scroll" id="table"></div>
+      <div class="actions"><button type="button" id="showall" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>Each line is matched against a fixed set of formats, strictly, rather than handed to the browser's own date
+      reader, whose results for anything but ISO 8601 differ from browser to browser. A line with a zone (Z, UTC, GMT,
+      an offset like +05:30, or a military zone letter) is fixed by it. A line without one is read as a wall clock in
+      the source zone, using that zone's IANA rules for the date in question, so 14:30 in America/Chicago is 19:30 UTC
+      in October and 20:30 UTC in January.</p>
+    <ul>
+      <li><strong>Unix time</strong>, seconds since 00:00 UTC on 1 January 1970: 9 to 11 digits are read as seconds,
+        12 to 14 as milliseconds. A shorter number is refused, since it is more likely a year or a count.</li>
+      <li><strong>Numeric dates</strong> with the year last are ambiguous: 03/04/2026 is 3 April in most of the world
+        and 4 March in the US. The page uses the order you choose and notes each line where the other order would
+        also have been a valid date.</li>
+      <li><strong>Date-time groups</strong> (DDHHMM, zone letter, month, year) use the military zone letters: A to M
+        (skipping J) are UTC+1 to UTC+12, N to Y are UTC-1 to UTC-12, Z is UTC. J means the writer's local time and is
+        refused, since it has no fixed offset.</li>
+      <li><strong>Zone abbreviations</strong> such as EST or CST are refused: CST is US Central, China and Cuba
+        Standard Time. Use an offset, or choose the source zone.</li>
+      <li><strong>Clock changes</strong>: a time that a change to or from daylight saving time skips is moved forward
+        by the gap; a time it repeats takes the first of the two moments. Both are flagged, with the other reading.</li>
+    </ul>
+    <p>The span is the time from the earliest to the latest line read. Leap seconds are not counted, as in Unix time.</p>
+    <p class="small muted">References: ISO 8601-1:2019; RFC 3339; RFC 5322 section 3.3; the IANA tz database;
+      military time-zone letters as in ACP 121. Test: <code>tests/timestamp-batch.test.js</code> (1729952400 is
+      2024-10-26T14:20:00Z; 261430ROCT25 is 2025-10-26T19:30Z; clock changes in America/Chicago in 2026).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

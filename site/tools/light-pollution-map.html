@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light Pollution Map · Dead Drop Toolbox</title>
+<meta name="description" content="Scout dark observing sites on a map with NASA's satellite image of night lights, keep a list of sites, and convert sky-brightness readings.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="light-pollution-map.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/light-pollution.js"></script>
+<script src="light-pollution-map.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping · Orbits and space</p>
+  <h1>Light Pollution Map</h1>
+  <p class="lede">Helps find dark places to watch satellites or the night sky. The map can show NASA's satellite image
+    of the Earth's lights at night, which marks the towns and industry that light up the sky nearby. You can keep a
+    list of candidate sites, and convert a <em>sky-brightness</em> reading (from a Sky Quality Meter, in magnitudes per
+    square arcsecond) or the faintest star you can see into the usual measures.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Location</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" step="any" value="28.5"></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" step="any" value="-80.6"></div>
+      </div>
+      <span class="hint small muted">Decimal degrees, north and east positive. Clicking the map fills these in.</span>
+      <div class="actions"><button type="submit">Go to this location</button></div>
+      <div class="field lp-gap"><label for="siteName">Site name</label>
+        <input type="text" id="siteName" maxlength="80" placeholder="For example: north field pull-off"></div>
+      <div class="actions"><button class="primary" type="button" id="saveSite">Save this site</button></div>
+
+      <h2 class="lp-gap">Night lights layer</h2>
+      <label class="check"><input type="checkbox" id="lights" checked> Show NASA night lights (2012)</label>
+      <div class="field"><label for="opacity">Layer opacity (%)</label>
+        <input type="number" id="opacity" min="10" max="100" step="10" value="70"></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the area and night lights"></div>
+      <h2 class="lp-gap">Saved sites</h2>
+      <div class="scroll" id="sitesWrap"><div id="sites"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+    </section>
+  </div>
+
+  <div class="tool lp-gap">
+    <form class="panel" id="convForm" novalidate>
+      <h2>Sky brightness</h2>
+      <div class="field"><label for="sqm">Meter reading (mag/arcsec²)</label>
+        <input type="number" id="sqm" step="any" value="21.2">
+        <span class="hint">From a Sky Quality Meter pointed straight up on a clear, moonless night. Larger is darker: about 22.0 is a natural sky, 18 a suburb, 16 to 17 a city centre.</span></div>
+      <div class="field"><label for="nelm">Faintest star seen (magnitude)</label>
+        <input type="number" id="nelm" step="0.1" value="6.4">
+        <span class="hint">The <em>naked-eye limiting magnitude</em>: the faintest star you can see without optics, near the zenith once your eyes have adapted. Leave empty to skip.</span></div>
+      <div class="actions"><button class="primary" type="submit">Convert</button></div>
+      <p class="msg" id="convMsg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="convResults"></div>
+      <h3>Bortle dark-sky classes</h3>
+      <div id="bortle"></div>
+    </section>
+  </div>
+
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>The map layer.</strong> The night-lights layer is NASA's <em>VIIRS City Lights 2012</em> image: a
+      cloud-free composite of light seen from orbit by the Day/Night Band of the VIIRS instrument on the Suomi NPP
+      satellite in April and October 2012, made by NASA's Earth Observatory with NOAA's National Geophysical Data
+      Center and served by NASA's Global Imagery Browse Services (GIBS). It shows <em>light going up</em> from the
+      ground, not how bright the sky looks from a place: the glow of a city spreads across the sky tens to a few
+      hundred kilometres away, so a site that is dark on this image can still have a bright horizon. It is also from
+      2012, before most towns changed to LED lighting, which the VIIRS band sees poorly in the blue. Treat it as a
+      guide to where the lights are, then check the sky on site. NASA's imagery has no restriction on reuse; NASA asks
+      that it be credited, as the map does. The image goes to zoom 8, so at closer zoom it is enlarged.</p>
+    <p><strong>Sky brightness.</strong> A reading m in magnitudes per square arcsecond converts to luminance by</p>
+    <p class="formula">L (cd/m²) = 10.8 × 10⁴ × 10<sup>−0.4 m</sup></p>
+    <p>and its ratio to a natural sky of 22.0 mag/arcsec² is 10<sup>−0.4 (m − 22.0)</sup>. A natural sky works out
+      to 171 µcd/m² by this conversion (Falchi and colleagues quote 174 µcd/m²). The natural sky itself varies by a few
+      tenths of a magnitude with airglow, the Milky Way and the solar cycle, so a reading a little above 22.0 is not an
+      error.</p>
+    <p><strong>Bortle class.</strong> John Bortle's nine classes describe what an observer sees, and he gave each a
+      range of naked-eye limiting magnitude; this tool looks your figure up in his ranges, putting a value that falls
+      between two ranges in the brighter class. Limiting magnitude depends on the observer's eyes, experience and
+      patience, so the class is a rough guide. There is no agreed conversion from a meter reading to a Bortle class
+      (published tables differ by half a class or more), so the tool does not offer one.</p>
+    <p><strong>Limits and services.</strong> The map uses OpenStreetMap tiles (tile.openstreetmap.org) and NASA GIBS
+      tiles (gibs.earthdata.nasa.gov). Nothing else is fetched; your sites and inputs are kept only in this
+      browser.</p>
+    <p class="small muted">References: P. Cinzano, "Night sky photometry with Sky Quality Meter", ISTIL Internal Report
+      9 (2005); F. Falchi et al., "The new world atlas of artificial night sky brightness", <em>Science Advances</em> 2,
+      e1600377 (2016); J. E. Bortle, "Introducing the Bortle Dark-Sky Scale", <em>Sky &amp; Telescope</em>, February
+      2001; NASA Earth Observatory, "Earth at Night" (2012). Test: <code>tests/light-pollution.test.js</code> (22.0
+      mag/arcsec² gives 171.2 µcd/m²; 18.0 gives 6.81 mcd/m², 39.8 times the natural sky).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only requests it makes are for OpenStreetMap and NASA GIBS map tiles.</div></footer>
+</body>
+</html>

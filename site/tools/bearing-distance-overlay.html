@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bearing and Distance Overlay · Dead Drop Toolbox</title>
+<meta name="description" content="Draw range rings and bearing lines on a map as true great-circle shapes, with each line's end point and arrival bearing.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="bearing-distance-overlay.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/distance-bearing.js"></script>
+<script src="../lib/bearing-overlay.js"></script>
+<script src="bearing-distance-overlay.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping</p>
+  <h1>Bearing and Distance Overlay</h1>
+  <p class="lede">Draws <em>range rings</em> (every point a set distance from a centre, such as a sensor's reach) and
+    <em>bearing lines</em> (the shortest path leaving a point in a set compass direction, such as a line of bearing
+    from a direction finder) on a map. Both are drawn as they really lie on the Earth, so long lines curve and large
+    rings stretch on the flat map, and each line's end point and arrival direction are listed.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <h2>Centre</h2>
+      <div class="row2">
+        <div class="field"><label for="lat">Latitude (°)</label>
+          <input type="number" id="lat" step="any" value="38.0"></div>
+        <div class="field"><label for="lon">Longitude (°)</label>
+          <input type="number" id="lon" step="any" value="-77.0"></div>
+      </div>
+      <span class="hint small muted">Decimal degrees: north and east positive. New shapes start from this centre.</span>
+      <div class="actions"><button type="button" id="setCentre">Set centre</button>
+        <button type="button" id="pick" aria-pressed="false">Pick centre on the map</button></div>
+
+      <h2>Range ring</h2>
+      <div class="field"><label for="radius">Radius (km)</label>
+        <input type="number" id="radius" min="0" step="any" value="50">
+        <span class="hint">Distance over the surface from the centre; under 20,015 km (half way round the Earth).</span></div>
+      <div class="row2">
+        <div class="field"><label for="ringColour">Colour</label><input type="color" id="ringColour" value="#c2410c"></div>
+        <div class="field"><label for="ringFill">Fill (%)</label><input type="number" id="ringFill" min="0" max="100" step="5" value="15"></div>
+      </div>
+      <div class="actions"><button type="button" id="addRing">Add ring</button></div>
+
+      <h2>Bearing line</h2>
+      <div class="row2">
+        <div class="field"><label for="bearing">Bearing (° true)</label>
+          <input type="number" id="bearing" step="any" value="45"></div>
+        <div class="field"><label for="length">Length (km)</label>
+          <input type="number" id="length" min="0" step="any" value="100"></div>
+      </div>
+      <span class="hint small muted">Bearing is degrees clockwise from true north (not magnetic north) at the centre.</span>
+      <div class="field"><label for="lineColour">Colour</label><input type="color" id="lineColour" value="#0f766e"></div>
+      <div class="actions"><button type="button" id="addLine" class="primary">Add line</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the overlays"></div>
+      <h2 class="bdo-gap">Shapes on the map</h2>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button>
+        <button type="button" id="clear">Remove all</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Earth is treated as a sphere of radius 6,371 km. Every vertex of a range ring, and every point along a
+      bearing line, is the <em>destination point</em>: where you arrive after travelling a distance d along a great
+      circle that sets off from latitude φ<sub>1</sub>, longitude λ<sub>1</sub> on bearing θ,</p>
+    <p class="formula">φ<sub>2</sub> = asin(sin φ<sub>1</sub> cos δ + cos φ<sub>1</sub> sin δ cos θ) &nbsp;&nbsp;
+      λ<sub>2</sub> = λ<sub>1</sub> + atan2(sin θ sin δ cos φ<sub>1</sub>, cos δ − sin φ<sub>1</sub> sin φ<sub>2</sub>)</p>
+    <p>with δ = d / R. A ring uses 180 vertices; a line uses one point every 50 km or so, so the drawing follows the
+      true path instead of a straight line on the flat map. The <em>arrival bearing</em> is the direction of travel at
+      the end of the line; it differs from the starting bearing on all but north-south lines and the equator, and the
+      arrow at the end of each line points that way. A ring that contains a pole is closed through the pole.</p>
+    <p><strong>Limits.</strong> A sphere, not the WGS 84 ellipsoid: positions can differ from an ellipsoidal
+      calculation by up to about 0.5% of the distance. A bearing line is a great circle; a ship or aircraft holding a
+      constant compass heading follows a rhumb line instead, which differs over long distances. The map uses the Web
+      Mercator projection, which stretches shapes toward the poles. Map tiles come from OpenStreetMap
+      (tile.openstreetmap.org); no other network service is used, and the shapes are kept only in this browser.</p>
+    <p class="small muted">Reference: Chris Veness, "Calculate distance, bearing and more between latitude/longitude
+      points", movable-type.co.uk (destination point). Test: <code>tests/bearing-overlay.test.js</code> (from
+      53° 19′ 14″ N, 001° 43′ 47″ W on 096° 01′ 18″ for 124.8 km: 53° 11′ 18″ N, 000° 08′ 00″ E).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only request it makes is for OpenStreetMap map tiles.</div></footer>
+</body>
+</html>

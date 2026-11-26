@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSV to Map Plotter · Dead Drop Toolbox</title>
+<meta name="description" content="Plot many points on a map from CSV rows, with the great-circle distance and bearing of each leg in row order.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="csv-map-plotter.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../lib/csv-map.js"></script>
+<script src="csv-map-plotter.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping</p>
+  <h1>CSV to Map Plotter</h1>
+  <p class="lede">Puts many points on a map at once from rows of CSV (comma-separated values, as a spreadsheet
+    exports), and gives the distance and direction of each leg from one row to the next along the shortest path over
+    the Earth's surface.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="csv">CSV rows</label>
+        <textarea id="csv" rows="9" spellcheck="false" placeholder="name,lat,lon,description"></textarea>
+        <span class="hint">One point per row. Either a header row naming the columns (lat or latitude, lon or longitude,
+          and optionally name and description, in any order) or no header and <span class="mono">name,lat,lon,description</span>.
+          Commas, semicolons or tabs; quote a field that holds a comma. Coordinates in decimal degrees (north and east
+          positive) or degrees, minutes and seconds such as <span class="mono">28°30'15"N</span>.</span></div>
+      <div class="field"><label for="file">Or open a CSV file</label>
+        <input type="file" id="file" accept=".csv,.tsv,.txt,text/csv,text/plain">
+        <span class="hint">Read in this browser; nothing is uploaded.</span></div>
+      <label class="check"><input type="checkbox" id="connect" checked> Join the points in row order</label>
+      <label class="check"><input type="checkbox" id="labels" checked> Show names on the map</label>
+      <div class="field"><label for="colour">Colour</label><input type="color" id="colour" value="#c2410c"></div>
+      <div class="actions"><button class="primary" type="submit">Plot on the map</button>
+        <button type="button" id="sample">Load a sample</button>
+        <button type="button" id="clear">Clear</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+      <div id="errors"></div>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the plotted points"></div>
+      <div class="results cmp-gap" id="results"></div>
+      <h2 class="cmp-gap">Legs in row order</h2>
+      <div class="scroll" id="legsWrap"><div id="legs"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The text is split into rows and fields by the CSV rules of RFC 4180: a field holding the separator, a quote or
+      a line break is wrapped in double quotes, and a quote inside it is written twice. The separator (comma,
+      semicolon or tab) is the one the first row uses most. If the first row names latitude and longitude columns,
+      those are used; otherwise the first pair of neighbouring columns that read as a latitude then a longitude in
+      most rows is used. Degrees, minutes and seconds become decimal degrees as degrees + minutes ÷ 60 + seconds ÷
+      3600, negative for south and west. A row whose coordinates cannot be read or are out of range (latitude
+      beyond ±90°, longitude beyond ±180°) is listed with its line number and left off the map.</p>
+    <p>Each leg's length is the great-circle distance (the shortest path over the surface) from the haversine
+      formula on a sphere of radius 6,371 km; its bearing is the initial direction from the first point toward the
+      second, in degrees clockwise from true north. The line drawn for each leg follows that same great circle, so
+      it bends on the flat map, and a leg across the 180° meridian is drawn the short way.</p>
+    <p><strong>Limits.</strong> A sphere, not the WGS 84 ellipsoid: distances can differ from an ellipsoidal
+      calculation by up to about 0.5%. Without a header the tool assumes latitude comes before longitude; a file
+      written longitude first with no header, where every value is within ±90, cannot be told apart, so add a header
+      row. The total is the length of the path in row order, not the shortest route through the points. The CSV text
+      and settings are kept only in this browser. Network use: OpenStreetMap map tiles (tile.openstreetmap.org) and
+      Leaflet from unpkg.com.</p>
+    <p class="small muted">References: RFC 4180, <em>Common Format and MIME Type for Comma-Separated Values (CSV)
+      Files</em>; Chris Veness, "Calculate distance, bearing and more between latitude/longitude points",
+      movable-type.co.uk (haversine distance, initial bearing, intermediate point). Test:
+      <code>tests/csv-map.test.js</code> (50° 03′ 59″ N, 005° 42′ 53″ W to 58° 38′ 38″ N, 003° 04′ 12″ W: 968.9 km on
+      an initial bearing of 009° 07′ 11″).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; the only requests are for OpenStreetMap map tiles and the Leaflet library.</div></footer>
+</body>
+</html>

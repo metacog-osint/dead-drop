@@ -1,0 +1,7 @@
+/* Reverse Image Geocoder: the photo preview, the drop highlight, and spacing. */
+.rig-preview { display: block; max-width: 100%; max-height: 280px; margin: 0 0 10px; border: 1px solid var(--border); border-radius: 6px; }
+.rig-preview[hidden] { display: none; }
+.rig-drop.over { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.rig-gap { margin-top: 18px; }
+a.btn { text-decoration: none; display: inline-block; }
+a.btn[hidden] { display: none; }

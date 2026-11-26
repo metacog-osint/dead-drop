@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Satellite Footprint Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="The patch of ground a satellite can serve at or above a minimum elevation angle: its radius, area and edge range.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/satellite-footprint.js"></script>
+<script src="satellite-footprint-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · RF and comms</p>
+  <h1>Satellite Footprint Calculator</h1>
+  <p class="lede">The <em>footprint</em> is the patch of ground from which a satellite stands at least a chosen
+    height above the horizon (the <em>minimum elevation angle</em>). This works out how wide that patch is, how much
+    of the Earth it covers, how far away the satellite is from its edge, and how wide a beam the satellite needs to
+    reach it.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="altitude">Satellite altitude (km)</label>
+        <input type="number" id="altitude" step="any" value="550">
+        <span class="hint">Height above the Earth's surface. Low Earth orbit is about 200 to 2,000 km; geostationary is 35,786 km.</span></div>
+      <div class="field"><label for="elevation">Minimum elevation angle (degrees)</label>
+        <input type="number" id="elevation" min="0" max="89.9" step="any" value="5">
+        <span class="hint">How high above the horizon the satellite must be to be usable: 0 is the horizon itself; 5 to 10 is common, to clear terrain, buildings and the thick air near the horizon.</span></div>
+      <div class="actions"><button class="primary" type="submit">Calculate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The Earth is treated as a sphere of radius R = 6,371 km, with the satellite at radius R + h. Seen from the
+      satellite, the Earth's disc has angular radius ρ, and the edge of the footprint lies at a <em>nadir
+      angle</em> η (the angle at the satellite between straight down and the edge point) and an <em>Earth central
+      angle</em> λ (the angle at the Earth's centre between the point below the satellite and the edge point):</p>
+    <p class="formula">sin ρ = R / (R + h) &nbsp;&nbsp; sin η = sin ρ · cos(elevation) &nbsp;&nbsp; λ = 90° − elevation − η</p>
+    <p>The footprint radius is the arc R·λ along the surface. The area is the spherical cap
+      <span class="mono">2πR²(1 − cos λ)</span>, not a flat circle: for a geostationary satellite at 0° a flat circle of the same
+      radius would overstate it by almost a fifth (257 against 216 million km²). The slant range to the edge is
+      <span class="mono">R sin λ / sin η</span>, worked here with the law of cosines, which gives the same number.
+      The nadir angle is the half-width a satellite's antenna or sensor beam needs to reach the footprint edge.</p>
+    <p>Limits: a sphere, not the WGS 84 ellipsoid (differences of a few tenths of a per cent); no terrain; the
+      footprint of one instant, not the swath swept along the orbit; and the geometry only, not whether a link
+      closes, which also depends on power and antennas.</p>
+    <p class="small muted">Reference: Wertz and Larson, <em>Space Mission Analysis and Design</em>, 3rd ed., section
+      5.2 (Earth geometry viewed from space). Test: <code>tests/satellite-footprint.test.js</code> (550 km at 5°
+      gives a 2,057.6 km footprint radius and 2.585 % of the Earth; geostationary at 0° sees 42.44 %).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>

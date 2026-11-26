@@ -1,0 +1,8 @@
+/* RF Source Triangulation: the receiver rows and the warnings list. */
+.rx-row { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr auto; gap: 6px; align-items: end; margin: 0 0 8px; }
+.rx-row label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 2px; }
+.rx-row button { padding: 6px 9px; }
+@media (max-width: 480px) { .rx-row { grid-template-columns: 1fr 1fr; } }
+.warnings { margin: 10px 0; padding-left: 18px; color: var(--warn); }
+.warnings:empty { display: none; }
+#map { margin-top: 12px; }

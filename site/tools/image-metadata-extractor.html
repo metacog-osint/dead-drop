@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Metadata Extractor · Dead Drop Toolbox</title>
+<meta name="description" content="Read the EXIF metadata in a JPEG photo in your browser: GPS position, dates, camera and exposure settings. The image is never uploaded.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="image-metadata-extractor.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.js"></script>
+<script src="../lib/image-metadata.js"></script>
+<script src="image-metadata-extractor.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Imagery and files</p>
+  <h1>Image Metadata Extractor</h1>
+  <p class="lede">Reads the <em>EXIF</em> block (the data a camera or phone writes inside a photo file) from a JPEG:
+    where it was taken if the device recorded a GPS position, when by the camera's own clock, and the camera and
+    exposure settings. The photo is read in this browser and is never uploaded.</p>
+  <div class="tool">
+    <form class="panel ime-drop" id="form" novalidate>
+      <div class="field"><label for="file">Photo (JPEG)</label>
+        <input type="file" id="file" accept="image/jpeg,.jpg,.jpeg,image/*">
+        <span class="hint">Choose a file or drop one on this panel. EXIF is read from JPEG files only; other formats
+          are shown but their metadata is not read.</span></div>
+      <img id="preview" class="ime-preview" alt="The chosen photo" hidden>
+      <div class="actions"><button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+      <p class="small muted">Nothing leaves this page: the file is read with the browser's own file reader. Many
+        sites (messaging apps, social networks) strip EXIF when a photo is shared, so a photo saved from one often has
+        none.</p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <p class="empty" id="none">Choose a photo to read its metadata.</p>
+      <div id="out" hidden>
+        <h3>Location</h3>
+        <div class="results" id="resGps"></div>
+        <div class="small" id="links"></div>
+        <h3>Dates and times</h3>
+        <div class="results" id="resDates"></div>
+        <h3>Camera</h3>
+        <div class="results" id="resCamera"></div>
+        <h3>Exposure settings</h3>
+        <div class="results" id="resSettings"></div>
+        <h3>Image</h3>
+        <div class="results" id="resImage"></div>
+        <h3>Every tag</h3>
+        <div class="scroll" id="tagsWrap"><div id="tags"></div></div>
+        <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+      </div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>The file's bytes are read in the browser and parsed by Exif.js (exif-js 2.3.0, MIT licence), which finds the
+      EXIF block in a JPEG and returns each tag. This page turns those tags into figures following the Exif standard:</p>
+    <ul>
+      <li><strong>Position.</strong> GPS latitude and longitude are stored as degrees, minutes and seconds with a
+        separate letter for the hemisphere. Decimal degrees = degrees + minutes ÷ 60 + seconds ÷ 3600, negative for
+        south (S) and west (W). Altitude is negative when the altitude reference says below sea level. A position of
+        exactly 0, 0, a missing hemisphere letter, or a map datum other than WGS 84 (the datum web maps use) is
+        flagged.</li>
+      <li><strong>Times.</strong> The "taken" and "modified" dates are the camera clock's reading, written as
+        year:month:day hour:minute:second with <em>no time zone</em>, so they are shown exactly as written and not
+        converted. Only the GPS date and time stamp is defined as UTC, so only it is shown in your chosen time zone.
+        When both are present the page gives the difference between them: a hint at the offset the camera clock was
+        set to, if both clocks were right, not a recorded time zone.</li>
+      <li><strong>Flash</strong> is a set of bits (fired or not, mode, return light, red-eye); <strong>exposure
+        time</strong> is shown as a fraction (1/250 s) when it is one.</li>
+    </ul>
+    <p><strong>Limits.</strong> Metadata is easy to edit, strip or forge, so treat it as a lead to check, not proof. A
+      phone's GPS fix can be tens of metres out (more indoors), or old if the fix was stale. Exif.js does not read
+      the Exif 2.31 time-offset tags, maker notes, XMP, PNG, HEIC or WebP metadata. The map links open OpenStreetMap or
+      Google Maps in a new tab and send them the coordinates in the link; nothing is sent unless you follow one. The
+      only other request this page makes is to load Exif.js from cdn.jsdelivr.net.</p>
+    <p class="small muted">Reference: CIPA DC-008, <em>Exchangeable image file format for digital still cameras:
+      Exif Version 2.32</em>, sections 4.6.5 (Exif tags) and 4.6.6 (GPS tags). Test:
+      <code>tests/image-metadata.test.js</code> (40° 26′ 46.302″ N, 79° 58′ 56.484″ W gives 40.446195, −79.982357).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Your photo is read in your browser and never uploaded.</div></footer>
+</body>
+</html>

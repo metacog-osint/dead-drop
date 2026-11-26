@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KML/KMZ Visualizer · Dead Drop Toolbox</title>
+<meta name="description" content="Open a Google Earth KML or KMZ file on a map in your browser, with each line's length and each polygon's area, and copy it as GeoJSON.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="kml-kmz-visualizer.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="../lib/kml.js"></script>
+<script src="kml-kmz-visualizer.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Geography and mapping · Imagery and files</p>
+  <h1>KML/KMZ Visualizer</h1>
+  <p class="lede">Opens a <em>KML</em> file (the map format Google Earth saves) or a <em>KMZ</em> (a zipped KML) on a
+    map: its points, lines and polygons, grouped by folder, with each line's length and each polygon's perimeter and
+    area. The file is read in this browser and is never uploaded.</p>
+  <div class="tool">
+    <form class="panel kkv-drop" id="form" novalidate>
+      <div class="field"><label for="file">KML or KMZ file</label>
+        <input type="file" id="file" accept=".kml,.kmz,application/vnd.google-earth.kml+xml,application/vnd.google-earth.kmz">
+        <span class="hint">Choose a file or drop one on this panel.</span></div>
+      <div class="results" id="stats"></div>
+      <div class="actions">
+        <button type="button" id="copy">Copy results as JSON</button>
+        <button type="button" id="clear">Clear</button>
+      </div>
+      <p class="small muted">The JSON is GeoJSON (RFC 7946), which most mapping and GIS software opens.</p>
+      <p class="msg" id="msg" hidden></p>
+      <div id="warnings"></div>
+    </form>
+    <section class="panel" aria-live="polite">
+      <div id="map" class="map" role="region" aria-label="Map of the file's features"></div>
+      <h2 class="kkv-gap">Features</h2>
+      <div class="scroll" id="listWrap"><div id="list"></div></div>
+      <div class="actions"><button type="button" id="showAll" hidden>Show all</button></div>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p>A KMZ is unzipped in the browser with JSZip (3.10.1, MIT licence) and its main KML chosen: <code>doc.kml</code>
+      at the top level, else the first KML there. The KML is read with the browser's own XML parser. Every
+      <em>Placemark</em> becomes one feature per geometry: Point, LineString, LinearRing, Polygon (an outer
+      boundary and any holes), each part of a MultiGeometry, and Google's gx:Track. KML writes each position
+      <strong>longitude first</strong>, as <span class="mono">longitude,latitude[,altitude]</span> in decimal degrees on
+      WGS 84; a position out of range (often a file written latitude first) is reported and that geometry skipped.
+      A ring that does not end where it starts is closed.</p>
+    <p>Lengths and perimeters add up great-circle distances between consecutive positions with the haversine
+      formula on a sphere of radius 6,371 km. Polygon area is
+      <span class="mono">A = (R² ⁄ 2) · |Σ (λ<sub>i+1</sub> − λ<sub>i−1</sub>) sin φ<sub>i</sub>|</span> over the
+      ring's positions (λ longitude, φ latitude, in radians), less the area of any holes.</p>
+    <p><strong>Limits.</strong> A sphere, not the WGS 84 ellipsoid: lengths and areas can differ from an ellipsoidal
+      calculation by up to about 0.5%. The area formula treats each edge as a straight line on an equal-area
+      cylindrical map (exact for edges along parallels and meridians); for edges of up to a few hundred kilometres
+      that is very close to the great-circle edge. Altitudes
+      are kept in the JSON but not used in the measures. Styles, icons, overlays, 3D models and time spans are not
+      drawn, and network links (KML that loads other files from the internet) are counted but not followed.
+      Descriptions are shown as plain text; nothing in a file is run or fetched. The map draws straight lines
+      between positions on a flat Web Mercator map, so a long, sparse line looks different from Google Earth's globe.
+      Network use: OpenStreetMap map tiles (tile.openstreetmap.org), Leaflet from unpkg.com and JSZip from
+      cdnjs.cloudflare.com. The last file's features are kept in this browser so they come back on your next visit;
+      Clear removes them.</p>
+    <p class="small muted">References: OGC KML 2.2 (OGC 07-147r2), sections 16.9 (coordinates), 10.8 (Polygon) and
+      10.5 (LinearRing); RFC 7946 (GeoJSON); Chris Veness, "Calculate distance, bearing and more between
+      latitude/longitude points", movable-type.co.uk (haversine); Chamberlain and Duquette, "Some algorithms for
+      polygons on a sphere", JPL Publication 07-03, 2007 (area). Test: <code>tests/kml.test.js</code> (a 1° × 1° cell
+      from the equator: 12,363.68 km², perimeter 444.763 km).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Your file is read in your browser and never uploaded; the only requests are for map tiles and the two libraries.</div></footer>
+</body>
+</html>

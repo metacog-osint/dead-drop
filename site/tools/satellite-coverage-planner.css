@@ -1,0 +1,3 @@
+/* Satellite Coverage Planner: gap above the map, the "Show all" scroll state. */
+.scp-gap { margin-top: 14px; }
+.scroll.all { max-height: none; }

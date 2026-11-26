@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launch Vehicle Performance Calculator · Dead Drop Toolbox</title>
+<meta name="description" content="A first estimate of a rocket's payload to a chosen orbit, scaled from its published payload to low Earth orbit, with the velocity changes worked out.">
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../toolbox.css">
+<link rel="stylesheet" href="../tic-time.css">
+<link rel="stylesheet" href="../tic-nav.css">
+<script src="../tic-time.js"></script>
+<script src="../tic-nav.js" defer></script>
+<script src="../toolbox.js"></script>
+<script src="../lib/launch-vehicle-performance.js"></script>
+<script src="launch-vehicle-performance-calculator.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="wrap top-row">
+    <div class="brand"><a href="../"><strong>Dead Drop</strong></a><span class="muted">Toolbox · The Intelligence Company</span></div>
+    <nav class="top-nav" aria-label="Toolbox"><a href="../">All tools</a><span id="time-settings"></span></nav>
+  </div>
+</header>
+<main id="main" class="wrap">
+  <p class="crumb muted">Orbits and space · Launch</p>
+  <h1>Launch Vehicle Performance Calculator</h1>
+  <p class="lede">A first estimate of how much a rocket can carry to an orbit, scaled from what its maker says it can
+    carry to low Earth orbit. The tool works out the extra <em>delta-v</em> (the change of speed the vehicle must
+    supply) to reach the target instead of the reference orbit, then converts that into payload with a rule of thumb.
+    The delta-v figures are textbook physics; the payload figure is an approximation and can be off by 10 per cent or
+    more. Use a vehicle's own user's guide for anything that matters.</p>
+  <div class="tool">
+    <form class="panel" id="form" novalidate>
+      <div class="field"><label for="vehicle">Vehicle</label>
+        <select id="vehicle"></select>
+        <span class="hint">Picking one fills the boxes below with approximate public figures; edit any of them.</span></div>
+      <h3>Reference orbit (the published figure)</h3>
+      <div class="row2">
+        <div class="field"><label for="p0">Payload to it (kg)</label>
+          <input type="number" id="p0" min="1" step="any" value="22800"></div>
+        <div class="field"><label for="refAlt">Its altitude (km)</label>
+          <input type="number" id="refAlt" min="100" max="2000" step="any" value="200">
+          <span class="hint">Circular. Makers rarely state it; 200 km is assumed.</span></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="lat">Launch site latitude (°)</label>
+          <input type="number" id="lat" min="-89.99" max="89.99" step="any" value="28.5"></div>
+        <div class="field"><label for="refInc">Its inclination (°)</label>
+          <input type="number" id="refInc" min="0" max="180" step="any" value="28.5">
+          <span class="hint">Usually the site latitude (a due-east launch).</span></div>
+      </div>
+      <h3>Upper stage</h3>
+      <div class="row2">
+        <div class="field"><label for="dry">Dry mass (kg)</label>
+          <input type="number" id="dry" min="0" step="any" value="4000">
+          <span class="hint">Empty stage, no propellant.</span></div>
+        <div class="field"><label for="isp">Specific impulse (s)</label>
+          <input type="number" id="isp" min="1" max="1000" step="any" value="348">
+          <span class="hint">Engine efficiency in vacuum: about 340 to 350 for kerosene and oxygen, 440 to 465 for hydrogen and oxygen.</span></div>
+      </div>
+      <h3>Target</h3>
+      <div class="field"><label for="type">Orbit</label>
+        <select id="type">
+          <option value="circular">Circular orbit (low, medium or high)</option>
+          <option value="sso">Sun-synchronous circular orbit</option>
+          <option value="gto">Geostationary transfer orbit (GTO)</option>
+          <option value="geo">Geostationary orbit (GEO)</option>
+        </select></div>
+      <div id="circ-fields"><div class="row2">
+        <div class="field"><label for="alt">Altitude (km)</label>
+          <input type="number" id="alt" min="100" step="any" value="550"></div>
+        <div class="field" id="inc-field"><label for="inc">Inclination (°)</label>
+          <input type="number" id="inc" min="0" max="180" step="any" value="53"></div>
+      </div></div>
+      <div class="actions"><button class="primary" type="submit">Estimate</button>
+        <button type="button" id="copy">Copy results as JSON</button></div>
+      <p class="msg" id="msg" hidden></p>
+    </form>
+    <section class="panel" aria-live="polite">
+      <h2>Results</h2>
+      <div class="results" id="results"></div>
+      <h3>Extra delta-v, step by step</h3>
+      <div id="parts"></div>
+      <h3>All listed vehicles to this target</h3>
+      <div class="scroll" id="compare"></div>
+      <p class="small muted">Each vehicle from its own site latitude, with its listed figures. "Model, GTO" shows the
+        same rule of thumb applied to GTO beside the maker's GTO figure, as a check on how far to trust it.</p>
+    </section>
+  </div>
+  <details class="method">
+    <summary>How this is worked out</summary>
+    <p><strong>Delta-v (physics, ideal).</strong> Every step is an impulsive velocity change with no gravity, drag or
+      steering losses, which are about the same for the reference and the target ascents and so largely cancel
+      (a real climb to low orbit needs about 9.3 to 9.5 km/s in all, of which 1.5 to 2 km/s is losses).</p>
+    <ul>
+      <li><em>Earth's rotation.</em> The speed to add relative to the ground is
+        <span class="mono">√(v² − 2 v ω N cos i + (ω N cos φ)²)</span>: v is the orbital speed, ω N cos φ the site's
+        eastward speed and ω N cos i the part of it that lies along the orbit (from cos i = cos φ sin Az). A
+        due-east launch gains the most; a polar one gains none; a retrograde one loses.</li>
+      <li><em>Altitude.</em> A Hohmann transfer between circular orbits: two burns,
+        √(μ(2/r₁ − 1/a)) − √(μ/r₁) and √(μ/r₂) − √(μ(2/r₂ − 1/a)), with a = (r₁ + r₂)/2.</li>
+      <li><em>GTO</em> is the transfer orbit from the reference altitude to 35,786 km, at the site's latitude;
+        <em>GEO</em> adds the apogee burn that circularises and removes the inclination together,
+        √(v<sub>a</sub>² + v<sub>GEO</sub>² − 2 v<sub>a</sub> v<sub>GEO</sub> cos i). Makers' GTO figures often use a
+        different perigee or a partly removed inclination, so compare like with like.</li>
+      <li><em>Below the site's latitude</em> the vehicle launches at the latitude and then turns the plane in the final
+        orbit, 2 v sin(Δi/2). That is an upper bound; doing it at a higher point or during the climb is cheaper.</li>
+      <li><em>Sun-synchronous</em> inclination is where the Earth's bulge (J2) turns the orbit 0.9856° a day, keeping
+        pace with the Sun: cos i = −(0.9856°/day) / (1.5 n J2 (R/a)²).</li>
+    </ul>
+    <p><strong>Payload (rule of thumb).</strong> The extra delta-v is paid for by turning payload into upper-stage
+      propellant: the stage's burnout mass shrinks by the rocket equation,
+      <span class="mono">P = (P₀ + m<sub>dry</sub>) e<sup>−Δv / (g₀ I<sub>sp</sub>)</sup> − m<sub>dry</sub></span>, with
+      g₀ = 9.80665 m/s². This is not a vehicle model: it ignores tank size, restarts, coast, the lower stages and the
+      change in losses, and a lower target can show more payload than the vehicle's structure allows. Against the
+      makers' GTO figures it lands within about 10 per cent for the listed vehicles (see the table). The vehicle
+      figures are approximate public numbers, not checked against the users' guides; reference orbits differ by
+      vehicle, and "expendable" means no booster recovery.</p>
+    <p class="small muted">References: Vallado, <em>Fundamentals of Astrodynamics and Applications</em>, 4th ed., chapter 6
+      (Hohmann transfers, example 6-1; plane changes); Curtis, <em>Orbital Mechanics for Engineering Students</em>,
+      chapter 6 and section 4.7; Wertz and Larson, <em>Space Mission Analysis and Design</em>, 3rd ed., chapter 6 (sun-synchronous orbits);
+      WGS 84 constants. Test: <code>tests/launch-vehicle-performance.test.js</code> (Vallado example 6-1: 2.4570 + 1.4782 =
+      3.9352 km/s; GTO perigee burn from 200 km, 2.4546 km/s; sun-synchronous at 700 km, 98.19°).</p>
+  </details>
+</main>
+<footer class="foot"><div class="wrap">Dead Drop Toolbox. Everything runs in your browser; nothing you type is sent anywhere.</div></footer>
+</body>
+</html>
